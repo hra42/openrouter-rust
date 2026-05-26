@@ -95,7 +95,7 @@ Work is broken into 7 phases:
 3. **Advanced Inference** ✅ — tool calling, structured outputs, MCP, transforms, web search, provider routing, reasoning
 4. **Multimodal Inputs** ✅ — images, PDFs (with parsing engines + annotation reuse), audio, text files, `ContentBuilder` for mixed content
 5. **Discovery & Account** ✅ — models, endpoints, providers, credits, activity, API key CRUD
-6. **Org & Beta Surfaces** — workspaces, members, guardrails, rerank, TTS, video, webhooks, OAuth PKCE, Responses API
+6. **Org & Beta Surfaces** ✅ — workspaces, members, guardrails (+ ZDR endpoints), rerank, TTS, video, broadcast webhooks, OAuth PKCE, **[beta]** Responses API (gated behind the `beta` cargo feature)
 7. **Testing, Docs & Release** — unit + E2E test coverage, docs site, crates.io publish
 
 ## Reference

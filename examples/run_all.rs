@@ -13,11 +13,15 @@
 use std::fmt::Write as _;
 
 use futures::StreamExt;
+use openrouter::oauth::{
+    create_s256_code_challenge, generate_code_verifier, AuthUrlParams, CodeChallengeMethod,
+};
+use openrouter::webhooks::parse_broadcast_traces;
 use openrouter::{
     create_file_parser_plugin, create_user_message_with_image, mcp, Annotation,
     ChatCompletionRequest, Client, CompletionRequest, ContentBuilder, FileParserEngine,
-    FunctionDef, ImageDetail, ListModelsOptions, Message, Role, Tool, ToolCallAccumulator,
-    ToolChoice,
+    FunctionDef, ImageDetail, ListModelsOptions, Message, RerankRequest, Role, Tool,
+    ToolCallAccumulator, ToolChoice,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -44,6 +48,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("multimodal", run_multimodal),
         ("discovery", run_discovery),
         ("account", run_account),
+        ("rerank", run_rerank),
+        ("zdr_endpoints", run_zdr_endpoints),
+        ("webhook_parser", run_webhook_parser),
+        ("oauth_pkce_helpers", run_oauth_pkce_helpers),
     ];
 
     let mut summary = Vec::new();
@@ -408,6 +416,93 @@ fn run_account(client: &Client) -> Fut {
             "  key:     {} (free_tier={}, provisioning={})",
             key.data.label, key.data.is_free_tier, key.data.is_provisioning_key
         );
+        Ok(())
+    })
+}
+
+fn run_rerank(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        let query = "What does the OpenRouter SDK do?";
+        let documents = vec![
+            "OpenRouter is a unified API for multiple LLM providers.".to_string(),
+            "Rust is a systems programming language focused on safety.".to_string(),
+            "A baker's recipe for sourdough bread.".to_string(),
+        ];
+        let resp = client
+            .rerank(&RerankRequest {
+                model: "cohere/rerank-v3.5".into(),
+                query: query.into(),
+                documents: documents.clone(),
+                top_n: Some(2),
+                ..Default::default()
+            })
+            .await?;
+        for r in &resp.results {
+            println!(
+                "  [{:>2}] {:.4}  {}",
+                r.index, r.relevance_score, documents[r.index as usize]
+            );
+        }
+        Ok(())
+    })
+}
+
+fn run_zdr_endpoints(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        let zdr = client.list_zdr_endpoints().await?;
+        println!("  ZDR-compatible endpoints: {}", zdr.data.len());
+        for ep in zdr.data.iter().take(3) {
+            println!("    {:<32}  {}", ep.model_id, ep.provider_name);
+        }
+        Ok(())
+    })
+}
+
+fn run_webhook_parser(_client: &Client) -> Fut {
+    Box::pin(async move {
+        // No network — the parser works on canned OTLP JSON.
+        let payload = br#"{
+            "resourceSpans":[{"resource":{"attributes":[]},"scopeSpans":[{"spans":[{
+                "traceId":"a","spanId":"b","name":"gen_ai.chat",
+                "kind":2,"startTimeUnixNano":"1700000000000000000",
+                "endTimeUnixNano":"1700000000500000000",
+                "attributes":[
+                    {"key":"gen_ai.response.model","value":{"stringValue":"openai/gpt-5"}},
+                    {"key":"gen_ai.usage.input_tokens","value":{"intValue":"120"}},
+                    {"key":"gen_ai.usage.output_tokens","value":{"intValue":"30"}}
+                ]
+            }]}]}]
+        }"#;
+        let traces = parse_broadcast_traces(payload)?;
+        println!("  parsed {} trace(s)", traces.len());
+        if let Some(t) = traces.first() {
+            println!(
+                "    model={} input={} output={} total={}",
+                t.model, t.input_tokens, t.output_tokens, t.total_tokens
+            );
+        }
+        Ok(())
+    })
+}
+
+fn run_oauth_pkce_helpers(_client: &Client) -> Fut {
+    Box::pin(async move {
+        // No network — just exercise the helper utilities end-to-end.
+        let verifier = generate_code_verifier();
+        let challenge = create_s256_code_challenge(&verifier);
+        let url = openrouter::oauth::build_auth_url(
+            "https://openrouter.ai/auth",
+            AuthUrlParams {
+                callback_url: "https://example.com/cb",
+                code_challenge: Some(&challenge),
+                code_challenge_method: Some(CodeChallengeMethod::S256),
+            },
+        )?;
+        println!("  verifier len: {}", verifier.len());
+        println!("  challenge:    {challenge}");
+        println!("  auth URL:     {url}");
         Ok(())
     })
 }
