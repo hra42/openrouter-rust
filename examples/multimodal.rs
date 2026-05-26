@@ -17,7 +17,7 @@ use openrouter::{
 };
 
 const MODEL: &str = "google/gemini-3.1-flash-lite";
-const IMAGE_URL: &str = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png";
+const IMAGE_URL: &str = "https://hra42.com/test-image.png";
 const PDF_URL: &str = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
 // 1x1 transparent PNG.

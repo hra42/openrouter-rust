@@ -374,7 +374,7 @@ fn run_multimodal(client: &Client) -> Fut {
             MODEL,
             vec![create_user_message_with_image(
                 "Describe this image in one sentence.",
-                "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png",
+                "https://hra42.com/test-image.png",
             )],
         );
         let resp = client.chat_complete(req).await?;
@@ -390,7 +390,7 @@ fn run_multimodal(client: &Client) -> Fut {
         let msg = ContentBuilder::new()
             .add_text("What colors dominate this image?")
             .add_image_with_detail(
-                "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png",
+                "https://hra42.com/test-image.png",
                 ImageDetail::Low,
             )
             .build_message(Role::User);
