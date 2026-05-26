@@ -32,6 +32,9 @@ pub use types::{
     ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest, CompletionResponse,
     Content, ContentBuilder, ContentPart, Delta, File, FileAnnotation, FileParserEngine,
     FilePdfConfig, FilePluginConfig, FileRef, FunctionCall, FunctionDef, ImageDetail, ImageUrl,
-    InputAudio, Message, Plugin, Provider, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall,
-    ToolChoice, UrlCitation, Usage, WebPluginConfig,
+    InputAudio, ListModelsOptions, Message, Model, ModelArchitecture, ModelDefaultParameters,
+    ModelEndpoint, ModelEndpointPricing, ModelEndpointsArchitecture, ModelEndpointsData,
+    ModelEndpointsResponse, ModelPerRequestLimits, ModelPricing, ModelTopProvider, ModelsResponse,
+    Plugin, Provider, ProviderInfo, ProvidersResponse, ReasoningConfig, ResponseFormat, Role, Tool,
+    ToolCall, ToolChoice, UrlCitation, Usage, WebPluginConfig,
 };

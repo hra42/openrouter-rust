@@ -12,7 +12,8 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse, Provider,
+    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
+    ListModelsOptions, ModelsResponse, Provider,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -127,6 +128,18 @@ impl Client {
         req.stream = Some(true);
         apply_model_suffix(&mut req.model, &mut req.provider);
         self.open_event_stream("completions", &req).await
+    }
+
+    /// List available models on OpenRouter.
+    ///
+    /// `GET /models`. Supports an optional category filter
+    /// ([`ListModelsOptions::category`]) and supported-parameter filter.
+    /// The `supported_parameters` field of each [`crate::Model`] is the union
+    /// of parameters across all providers — a single provider may not offer
+    /// every listed parameter.
+    pub async fn list_models(&self, opts: Option<&ListModelsOptions>) -> Result<ModelsResponse> {
+        let query = opts.map(ListModelsOptions::to_query).unwrap_or_default();
+        request::execute_json_get(self, "models", &query).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build

@@ -75,23 +75,80 @@ where
     Req: Serialize + ?Sized,
     Resp: DeserializeOwned,
 {
-    let url = endpoint_url(client, path)?;
-    let headers = base_headers(client, ACCEPT_JSON)?;
     let body_bytes = serde_json::to_vec(body)?;
+    execute_request(client, Method::POST, path, &[], Some(body_bytes)).await
+}
+
+/// Execute a JSON GET and decode the response as `Resp`.
+///
+/// `query` is a slice of (key, value) pairs appended to the URL via
+/// [`url::Url::query_pairs_mut`] — pass an empty slice for no query string.
+/// Retries / error parsing match [`execute_json`].
+#[allow(dead_code)] // Consumed by the discovery / account endpoints (HRA-112).
+pub(crate) async fn execute_json_get<Resp>(
+    client: &Client,
+    path: &str,
+    query: &[(&str, String)],
+) -> Result<Resp>
+where
+    Resp: DeserializeOwned,
+{
+    execute_request(client, Method::GET, path, query, None).await
+}
+
+/// Execute a JSON request with an arbitrary method (DELETE, PATCH, etc.) and
+/// an optional pre-serialized JSON body. Used by the API-key CRUD endpoints.
+#[allow(dead_code)] // Consumed by the API-key CRUD endpoints (HRA-142).
+pub(crate) async fn execute_json_method<Req, Resp>(
+    client: &Client,
+    method: Method,
+    path: &str,
+    body: Option<&Req>,
+) -> Result<Resp>
+where
+    Req: Serialize + ?Sized,
+    Resp: DeserializeOwned,
+{
+    let body_bytes = match body {
+        Some(b) => Some(serde_json::to_vec(b)?),
+        None => None,
+    };
+    execute_request(client, method, path, &[], body_bytes).await
+}
+
+/// Shared inner loop for all JSON unary methods. Runs through [`run_with_retry`].
+async fn execute_request<Resp>(
+    client: &Client,
+    method: Method,
+    path: &str,
+    query: &[(&str, String)],
+    body_bytes: Option<Vec<u8>>,
+) -> Result<Resp>
+where
+    Resp: DeserializeOwned,
+{
+    let mut url = endpoint_url(client, path)?;
+    if !query.is_empty() {
+        let mut q = url.query_pairs_mut();
+        for (k, v) in query {
+            q.append_pair(k, v);
+        }
+        drop(q);
+    }
+    let headers = base_headers(client, ACCEPT_JSON)?;
     let cfg = client.retry().clone();
 
     run_with_retry(&cfg, || {
         let url = url.clone();
         let headers = headers.clone();
         let body_bytes = body_bytes.clone();
+        let method = method.clone();
         async move {
-            let resp = client
-                .http()
-                .request(Method::POST, url)
-                .headers(headers)
-                .body(body_bytes)
-                .send()
-                .await?;
+            let mut req = client.http().request(method, url).headers(headers);
+            if let Some(b) = body_bytes {
+                req = req.body(b);
+            }
+            let resp = req.send().await?;
             let status = resp.status();
             if status.is_success() {
                 let bytes = resp.bytes().await?;
