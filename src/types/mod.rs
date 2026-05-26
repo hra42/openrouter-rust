@@ -9,8 +9,10 @@ mod request;
 mod response;
 
 pub use account::{
-    ActivityData, ActivityOptions, ActivityResponse, CreditsData, CreditsResponse, KeyData,
-    KeyRateLimit, KeyResponse,
+    ActivityData, ActivityOptions, ActivityResponse, ApiKey, CreateKeyRequest, CreateKeyResponse,
+    CreditsData, CreditsResponse, DeleteKeyData, DeleteKeyResponse, GetKeyByHashResponse, KeyData,
+    KeyRateLimit, KeyResponse, ListKeysOptions, ListKeysResponse, UpdateKeyRequest,
+    UpdateKeyResponse,
 };
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
