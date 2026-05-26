@@ -108,14 +108,16 @@ where
 /// Open a streaming POST. Returns the raw `Response` on a 2xx; the caller takes
 /// over via [`Response::bytes_stream`]. **Single attempt only** — stream-level
 /// reconnect lives in `crate::stream`.
-#[allow(dead_code)] // Consumed by the streaming layer (HRA-122 / HRA-123).
-pub(crate) async fn open_stream<Req>(client: &Client, path: &str, body: &Req) -> Result<Response>
-where
-    Req: Serialize + ?Sized,
-{
+///
+/// Accepts pre-serialized body bytes so the streaming layer can cache them in
+/// the reconnect closure and avoid re-serializing on every reconnect.
+pub(crate) async fn open_stream_bytes(
+    client: &Client,
+    path: &str,
+    body_bytes: Vec<u8>,
+) -> Result<Response> {
     let url = endpoint_url(client, path)?;
     let headers = base_headers(client, ACCEPT_SSE)?;
-    let body_bytes = serde_json::to_vec(body)?;
 
     let resp = client
         .http()

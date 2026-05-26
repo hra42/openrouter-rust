@@ -5,9 +5,12 @@ use std::time::Duration;
 
 use url::Url;
 
+use futures::FutureExt;
+
 use crate::error::{Error, Result};
 use crate::request;
 use crate::retry::RetryConfig;
+use crate::stream::EventStream;
 use crate::types::{
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
 };
@@ -91,6 +94,57 @@ impl Client {
     pub async fn complete(&self, mut req: CompletionRequest) -> Result<CompletionResponse> {
         req.stream = Some(false);
         request::execute_json(self, "completions", &req).await
+    }
+
+    /// Open a streaming chat-completions request.
+    ///
+    /// Returns an [`EventStream<ChatCompletionResponse>`]; each yielded chunk
+    /// carries `delta` (instead of `message`) on its `choices`. The stream
+    /// terminates cleanly on the `[DONE]` SSE marker.
+    ///
+    /// Transient mid-stream disconnects (timeouts, 5xx, 429) trigger a
+    /// reconnect with exponential backoff capped at `MAX_RECONNECT_BACKOFF`,
+    /// re-sending the original request body. Dropping the returned stream
+    /// cancels the underlying connection.
+    pub async fn chat_complete_stream(
+        &self,
+        mut req: ChatCompletionRequest,
+    ) -> Result<EventStream<ChatCompletionResponse>> {
+        req.stream = Some(true);
+        self.open_event_stream("chat/completions", &req).await
+    }
+
+    /// Open a streaming legacy completions request. Semantics mirror
+    /// [`Client::chat_complete_stream`]; chunks deserialize into
+    /// `CompletionResponse` with the streaming `text` delta on each choice.
+    pub async fn complete_stream(
+        &self,
+        mut req: CompletionRequest,
+    ) -> Result<EventStream<CompletionResponse>> {
+        req.stream = Some(true);
+        self.open_event_stream("completions", &req).await
+    }
+
+    /// Internal: serialize the request once, open the first stream, and build
+    /// a reconnect closure that re-issues the same body on transient failure.
+    async fn open_event_stream<Req, Resp>(
+        &self,
+        path: &'static str,
+        req: &Req,
+    ) -> Result<EventStream<Resp>>
+    where
+        Req: serde::Serialize + ?Sized,
+        Resp: serde::de::DeserializeOwned,
+    {
+        let body_bytes = serde_json::to_vec(req)?;
+        let initial = request::open_stream_bytes(self, path, body_bytes.clone()).await?;
+        let client = self.clone();
+        let reopen: crate::stream::Reopen = Arc::new(move || {
+            let client = client.clone();
+            let body_bytes = body_bytes.clone();
+            async move { request::open_stream_bytes(&client, path, body_bytes).await }.boxed()
+        });
+        Ok(EventStream::new(initial, reopen))
     }
 }
 
