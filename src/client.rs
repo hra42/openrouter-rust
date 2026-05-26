@@ -8,7 +8,9 @@ use url::Url;
 use crate::error::{Error, Result};
 use crate::request;
 use crate::retry::RetryConfig;
-use crate::types::{ChatCompletionRequest, ChatCompletionResponse};
+use crate::types::{
+    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
+};
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
 
@@ -80,6 +82,15 @@ impl Client {
     ) -> Result<ChatCompletionResponse> {
         req.stream = Some(false);
         request::execute_json(self, "chat/completions", &req).await
+    }
+
+    /// Send a legacy text-completions request and decode the unary response.
+    ///
+    /// `req.stream` is forced to `Some(false)` for the same reason as
+    /// [`Client::chat_complete`].
+    pub async fn complete(&self, mut req: CompletionRequest) -> Result<CompletionResponse> {
+        req.stream = Some(false);
+        request::execute_json(self, "completions", &req).await
     }
 }
 
