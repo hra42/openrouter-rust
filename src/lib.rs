@@ -8,6 +8,7 @@
 
 pub mod client;
 pub mod error;
+mod request;
 pub mod retry;
 pub mod types;
 

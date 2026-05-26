@@ -6,7 +6,9 @@ use std::time::Duration;
 use url::Url;
 
 use crate::error::{Error, Result};
+use crate::request;
 use crate::retry::RetryConfig;
+use crate::types::{ChatCompletionRequest, ChatCompletionResponse};
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
 
@@ -65,6 +67,19 @@ impl Client {
     /// Optional referer (sent as `HTTP-Referer` in Phase 2+).
     pub fn referer(&self) -> Option<&str> {
         self.inner.referer.as_deref()
+    }
+
+    /// Send a chat-completions request and decode the unary response.
+    ///
+    /// Retries transient failures per the client's [`RetryConfig`]. If `req.stream`
+    /// is set, it is forced to `Some(false)` so a caller-set `stream: true` cannot
+    /// subvert the unary endpoint.
+    pub async fn chat_complete(
+        &self,
+        mut req: ChatCompletionRequest,
+    ) -> Result<ChatCompletionResponse> {
+        req.stream = Some(false);
+        request::execute_json(self, "chat/completions", &req).await
     }
 }
 
