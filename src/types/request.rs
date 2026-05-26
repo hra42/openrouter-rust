@@ -212,6 +212,34 @@ impl ChatCompletionRequest {
     pub fn with_floor(self) -> Self {
         self.with_provider_sort("price")
     }
+
+    /// Replace the full reasoning config.
+    pub fn with_reasoning(mut self, reasoning: ReasoningConfig) -> Self {
+        self.reasoning = Some(reasoning);
+        self
+    }
+
+    fn reasoning_mut(&mut self) -> &mut ReasoningConfig {
+        self.reasoning.get_or_insert_with(ReasoningConfig::default)
+    }
+
+    /// Set the reasoning effort (`"low"`, `"medium"`, `"high"`).
+    pub fn with_reasoning_effort(mut self, effort: impl Into<String>) -> Self {
+        self.reasoning_mut().effort = Some(effort.into());
+        self
+    }
+
+    /// Cap the reasoning-token budget for this request.
+    pub fn with_reasoning_max_tokens(mut self, max_tokens: u32) -> Self {
+        self.reasoning_mut().max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Ask the provider to omit reasoning content from the response.
+    pub fn with_reasoning_exclude(mut self, exclude: bool) -> Self {
+        self.reasoning_mut().exclude = Some(exclude);
+        self
+    }
 }
 
 /// Legacy text-completions request payload.
@@ -350,6 +378,19 @@ mod tests {
                 "zdr": true,
                 "sort": "throughput"
             })
+        );
+    }
+
+    #[test]
+    fn with_reasoning_helpers_compose() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")])
+            .with_reasoning_effort("high")
+            .with_reasoning_max_tokens(512)
+            .with_reasoning_exclude(false);
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            v["reasoning"],
+            json!({"effort":"high","max_tokens":512,"exclude":false})
         );
     }
 

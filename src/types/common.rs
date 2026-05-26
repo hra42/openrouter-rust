@@ -270,6 +270,10 @@ impl Provider {
 }
 
 /// Reasoning-tokens configuration.
+///
+/// `effort` and `max_tokens` are mutually exclusive on OpenRouter's side —
+/// setting both yields a 400. Pick the one that matches the constraint you
+/// care about (qualitative effort budget vs. hard token cap).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReasoningConfig {
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -278,4 +282,30 @@ pub struct ReasoningConfig {
     pub max_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub exclude: Option<bool>,
+}
+
+impl ReasoningConfig {
+    /// New, empty reasoning config.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the reasoning effort (`"low"`, `"medium"`, `"high"`).
+    pub fn with_effort(mut self, effort: impl Into<String>) -> Self {
+        self.effort = Some(effort.into());
+        self
+    }
+
+    /// Cap the number of reasoning tokens.
+    pub fn with_max_tokens(mut self, max_tokens: u32) -> Self {
+        self.max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Ask the provider to omit reasoning tokens from the response (counts
+    /// still appear in usage when supported).
+    pub fn with_exclude(mut self, exclude: bool) -> Self {
+        self.exclude = Some(exclude);
+        self
+    }
 }
