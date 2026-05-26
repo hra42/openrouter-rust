@@ -773,7 +773,7 @@ impl Client {
 
     /// Internal: serialize the request once, open the first stream, and build
     /// a reconnect closure that re-issues the same body on transient failure.
-    async fn open_event_stream<Req, Resp>(
+    pub(crate) async fn open_event_stream<Req, Resp>(
         &self,
         path: &'static str,
         req: &Req,

@@ -39,6 +39,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # Default features only — verifies the crate compiles and tests pass
+      # with the beta surface gated off.
+      - run: cargo test
+      # All features — exercises the beta Responses API.
       - run: cargo test --all-features
 
   deny:

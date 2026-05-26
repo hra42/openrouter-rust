@@ -11,6 +11,8 @@ pub mod error;
 pub mod mcp;
 pub mod oauth;
 mod request;
+#[cfg(feature = "beta")]
+pub mod responses;
 pub mod retry;
 pub mod stream;
 pub mod tool_call_accumulator;
