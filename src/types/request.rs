@@ -103,6 +103,17 @@ impl ChatCompletionRequest {
     pub fn with_json_mode(self) -> Self {
         self.with_response_format(ResponseFormat::json_object())
     }
+
+    /// Set the message-transform pipeline. Passing an empty slice
+    /// explicitly disables OpenRouter's default transforms.
+    pub fn with_transforms<S, I>(mut self, transforms: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.transforms = Some(transforms.into_iter().map(Into::into).collect());
+        self
+    }
 }
 
 /// Legacy text-completions request payload.
@@ -133,6 +144,28 @@ pub struct CompletionRequest {
     pub transforms: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub user: Option<String>,
+}
+
+impl CompletionRequest {
+    /// Construct a new legacy completion request.
+    pub fn new(model: impl Into<String>, prompt: impl Into<String>) -> Self {
+        Self {
+            model: model.into(),
+            prompt: prompt.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Set the message-transform pipeline. Passing an empty slice
+    /// explicitly disables OpenRouter's default transforms.
+    pub fn with_transforms<S, I>(mut self, transforms: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.transforms = Some(transforms.into_iter().map(Into::into).collect());
+        self
+    }
 }
 
 #[cfg(test)]
@@ -179,6 +212,29 @@ mod tests {
         let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")]).with_json_mode();
         let v = serde_json::to_value(&req).unwrap();
         assert_eq!(v["response_format"], json!({"type":"json_object"}));
+    }
+
+    #[test]
+    fn with_transforms_serializes_array() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")])
+            .with_transforms(["middle-out"]);
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["transforms"], json!(["middle-out"]));
+    }
+
+    #[test]
+    fn with_transforms_empty_disables_defaults() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")])
+            .with_transforms(Vec::<String>::new());
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["transforms"], json!([]));
+    }
+
+    #[test]
+    fn completion_with_transforms_serializes_array() {
+        let req = CompletionRequest::new("x/y", "hello").with_transforms(["middle-out"]);
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["transforms"], json!(["middle-out"]));
     }
 
     #[test]
