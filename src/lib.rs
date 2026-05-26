@@ -14,6 +14,7 @@ pub mod retry;
 pub mod stream;
 pub mod tool_call_accumulator;
 pub mod types;
+pub mod webhooks;
 
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, Result};
