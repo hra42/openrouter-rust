@@ -11,6 +11,10 @@ keywords = ["openrouter", "llm", "ai", "async", "sdk"]
 categories = ["api-bindings", "asynchronous"]
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "rt"] }

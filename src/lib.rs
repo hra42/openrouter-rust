@@ -1,10 +1,17 @@
-//! Idiomatic async Rust SDK for the [OpenRouter](https://openrouter.ai) API.
+#![doc = include_str!("../docs/recipes/quickstart.md")]
 //!
-//! This crate is a Rust port of [openrouter-go](https://github.com/hra42/openrouter-go).
-//! Phase 1 establishes the substrate: client builder, error model, retry/backoff,
-//! and the shared serde types. Endpoints are wired in later phases.
+//! # More recipes
+//!
+//! - [Streaming](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/streaming.md)
+//! - [Tools](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/tools.md)
+//! - [Structured outputs](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/structured_outputs.md)
+//! - [Multimodal](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/multimodal.md)
+//! - [Provider routing](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/provider_routing.md)
+//! - [ZDR](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/zdr.md)
+//! - [Key management](https://github.com/hra42/openrouter-rust/blob/main/docs/recipes/key_management.md)
 
 #![allow(clippy::result_large_err)]
+#![deny(missing_docs)]
 
 pub mod client;
 pub mod error;

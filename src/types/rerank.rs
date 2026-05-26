@@ -60,6 +60,7 @@ pub struct RerankResult {
 /// The echoed document text inside a [`RerankResult`].
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RerankDocument {
+    /// Echoed document text.
     #[serde(default)]
     pub text: String,
 }
@@ -67,6 +68,7 @@ pub struct RerankDocument {
 /// Usage statistics for a rerank request.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RerankUsage {
+    /// Total tokens consumed across query + documents.
     #[serde(default)]
     pub total_tokens: u64,
     /// Cohere-style billing unit (per-document cost).

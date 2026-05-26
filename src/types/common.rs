@@ -10,11 +10,15 @@ use serde::{Deserialize, Serialize};
 /// carry only additional `function.arguments` bytes.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ToolCall {
+    /// Stable call identifier.
     #[serde(default)]
     pub id: String,
+    /// Wire `type` discriminator (currently always `"function"`).
     #[serde(rename = "type", default)]
     pub kind: String,
+    /// Function invocation payload.
     pub function: FunctionCall,
+    /// Streaming index for matching subsequent argument fragments.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub index: Option<u32>,
 }
@@ -22,8 +26,12 @@ pub struct ToolCall {
 /// Function-call payload (name + serialized JSON arguments).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionCall {
+    /// Function name. Streaming fragments may carry this only on the
+    /// first chunk for a given tool-call index.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
+    /// Serialized JSON arguments. Streaming sends this in fragments —
+    /// concatenate via [`crate::ToolCallAccumulator`].
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub arguments: Option<String>,
 }
@@ -32,17 +40,25 @@ pub struct FunctionCall {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Tool {
-    Function { function: FunctionDef },
+    /// A callable function tool.
+    Function {
+        /// Function definition.
+        function: FunctionDef,
+    },
 }
 
 /// Definition of a callable function tool.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionDef {
+    /// Function name as exposed to the model.
     pub name: String,
+    /// Optional human-readable description shown to the model.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
+    /// JSON Schema describing the function's parameters.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub parameters: Option<serde_json::Value>,
+    /// When true, require strict schema adherence.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub strict: Option<bool>,
 }
@@ -51,10 +67,14 @@ pub struct FunctionDef {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ToolChoice {
+    /// Named mode: `"auto"`, `"none"`, or `"required"`.
     Mode(String),
+    /// Force a specific tool by name.
     Specific {
+        /// Wire `type` discriminator (currently always `"function"`).
         #[serde(rename = "type")]
         kind: String,
+        /// Function reference.
         function: FunctionRef,
     },
 }
@@ -62,6 +82,7 @@ pub enum ToolChoice {
 /// Lightweight reference to a tool by function name.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionRef {
+    /// Function name to invoke.
     pub name: String,
 }
 
@@ -125,18 +146,28 @@ impl FunctionDef {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResponseFormat {
+    /// Plain text (default).
     Text,
+    /// Generic JSON-object mode (no schema constraint).
     JsonObject,
-    JsonSchema { json_schema: JsonSchema },
+    /// JSON constrained to a schema.
+    JsonSchema {
+        /// The schema definition.
+        json_schema: JsonSchema,
+    },
 }
 
 /// Structured-output JSON schema definition.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct JsonSchema {
+    /// Schema name (shown to the model).
     pub name: String,
+    /// Optional schema description.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub description: Option<String>,
+    /// JSON Schema document.
     pub schema: serde_json::Value,
+    /// Strict mode flag.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub strict: Option<bool>,
 }
@@ -164,24 +195,34 @@ impl ResponseFormat {
 /// Provider routing controls. Fleshed out further in Phase 3.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Provider {
+    /// Ordered preference list of provider slugs.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub order: Option<Vec<String>>,
+    /// Whether OpenRouter may fall back to other providers on failure.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub allow_fallbacks: Option<bool>,
+    /// Require providers to accept every supplied sampling parameter.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub require_parameters: Option<bool>,
+    /// Data-collection policy (`"allow"` / `"deny"`).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub data_collection: Option<String>,
+    /// Allowlist of provider slugs.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub only: Option<Vec<String>>,
+    /// Denylist of provider slugs.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ignore: Option<Vec<String>>,
+    /// Allowed quantization tiers.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub quantizations: Option<Vec<String>>,
+    /// Sort strategy: `"throughput"`, `"price"`, or `"latency"`.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sort: Option<String>,
+    /// Per-token max price filter (free-form JSON value).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_price: Option<serde_json::Value>,
+    /// Require zero-data-retention endpoints.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub zdr: Option<bool>,
 }
@@ -276,10 +317,13 @@ impl Provider {
 /// care about (qualitative effort budget vs. hard token cap).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReasoningConfig {
+    /// Qualitative effort budget (`"low"`, `"medium"`, `"high"`).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub effort: Option<String>,
+    /// Hard cap on reasoning tokens. Mutually exclusive with `effort`.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_tokens: Option<u32>,
+    /// Ask the provider to omit reasoning content from the response.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub exclude: Option<bool>,
 }
@@ -321,6 +365,7 @@ impl Plugin {
 /// Configuration for the `file-parser` plugin.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct FilePluginConfig {
+    /// PDF-specific configuration.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub pdf: Option<FilePdfConfig>,
 }
@@ -328,6 +373,7 @@ pub struct FilePluginConfig {
 /// PDF-specific options for the `file-parser` plugin.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct FilePdfConfig {
+    /// PDF parsing engine (see [`crate::FileParserEngine`]).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub engine: Option<String>,
 }
@@ -335,26 +381,33 @@ pub struct FilePdfConfig {
 /// Configuration for the `web` plugin.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct WebPluginConfig {
+    /// Maximum search-results to feed the model.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_results: Option<u32>,
+    /// Override the internal search prompt.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub search_prompt: Option<String>,
+    /// Search engine slug.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub engine: Option<String>,
 }
 
 impl WebPluginConfig {
+    /// New, empty web-plugin configuration.
     pub fn new() -> Self {
         Self::default()
     }
+    /// Builder: set [`Self::max_results`].
     pub fn with_max_results(mut self, n: u32) -> Self {
         self.max_results = Some(n);
         self
     }
+    /// Builder: set [`Self::search_prompt`].
     pub fn with_search_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.search_prompt = Some(prompt.into());
         self
     }
+    /// Builder: set [`Self::engine`].
     pub fn with_engine(mut self, engine: impl Into<String>) -> Self {
         self.engine = Some(engine.into());
         self
@@ -367,28 +420,43 @@ impl WebPluginConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Annotation {
-    UrlCitation { url_citation: UrlCitation },
-    File { file: FileAnnotation },
+    /// A URL citation produced by the web-search plugin.
+    UrlCitation {
+        /// The citation payload.
+        url_citation: UrlCitation,
+    },
+    /// A parsed-file annotation reusable across turns.
+    File {
+        /// The file annotation payload.
+        file: FileAnnotation,
+    },
 }
 
 /// Parsed-file annotation: feed it back into a follow-up request to reuse
 /// the prior parse result instead of re-running the file-parser.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FileAnnotation {
+    /// Display filename of the parsed file.
     pub filename: String,
+    /// Opaque parsed-content payload to feed back into a follow-up request.
     pub file_data: String,
 }
 
 /// A URL citation produced by the web-search plugin.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UrlCitation {
+    /// Citation URL.
     pub url: String,
+    /// Page title.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub title: Option<String>,
+    /// Extracted snippet from the citation.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub content: Option<String>,
+    /// Start character offset within the assistant message.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub start_index: Option<u32>,
+    /// End character offset within the assistant message.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub end_index: Option<u32>,
 }

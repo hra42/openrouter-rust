@@ -21,6 +21,7 @@ pub enum SpeechFormat {
 }
 
 impl SpeechFormat {
+    /// Lower-case wire value used in the request body.
     pub fn as_str(self) -> &'static str {
         match self {
             SpeechFormat::Mp3 => "mp3",
@@ -59,6 +60,8 @@ pub struct SpeechRequest {
 /// is spread into the upstream request body.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SpeechProvider {
+    /// Provider-keyed options. The map under the chosen provider's slug
+    /// is spread into the upstream request body.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub options: Option<BTreeMap<String, BTreeMap<String, Value>>>,
 }
@@ -68,7 +71,10 @@ pub struct SpeechProvider {
 /// or PCM when none was requested).
 #[derive(Clone, Debug)]
 pub struct SpeechResponse {
+    /// Raw audio bytes returned by the provider.
     pub audio: Bytes,
+    /// Upstream `Content-Type` header, when set.
     pub content_type: Option<String>,
+    /// Resolved output format (echoes the requested format, or PCM).
     pub format: SpeechFormat,
 }

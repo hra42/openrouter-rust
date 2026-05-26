@@ -11,16 +11,23 @@ pub struct ChatCompletionResponse {
     /// streaming chunks that only carry tool-call deltas.
     #[serde(default)]
     pub id: Option<String>,
+    /// Wire object discriminator (e.g. `"chat.completion"`).
     #[serde(default)]
     pub object: Option<String>,
+    /// Unix-seconds timestamp of generation.
     #[serde(default)]
     pub created: Option<u64>,
+    /// Model that produced the response.
     pub model: String,
+    /// Generated choices.
     pub choices: Vec<Choice>,
+    /// Token usage accounting, when reported by the provider.
     #[serde(default)]
     pub usage: Option<Usage>,
+    /// Provider that served the request.
     #[serde(default)]
     pub provider: Option<String>,
+    /// Provider-specific build / fingerprint identifier.
     #[serde(default)]
     pub system_fingerprint: Option<String>,
 }
@@ -28,15 +35,21 @@ pub struct ChatCompletionResponse {
 /// One choice in a chat-completions response (also used for streaming chunks).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Choice {
+    /// Choice index within the response.
     pub index: u32,
+    /// Full message (non-streaming) or final reconciled message.
     #[serde(default)]
     pub message: Option<Message>,
+    /// Incremental delta (streaming chunks).
     #[serde(default)]
     pub delta: Option<Delta>,
+    /// Why generation stopped (`stop`, `length`, `tool_calls`, ...).
     #[serde(default)]
     pub finish_reason: Option<String>,
+    /// Provider-native finish reason, when different.
     #[serde(default)]
     pub native_finish_reason: Option<String>,
+    /// Token-level log probabilities, when requested.
     #[serde(default)]
     pub logprobs: Option<LogProbs>,
 }
@@ -44,12 +57,17 @@ pub struct Choice {
 /// Incremental token delta for streaming responses.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Delta {
+    /// Role of the streaming message (only on the first delta).
     #[serde(default)]
     pub role: Option<Role>,
+    /// Text content fragment.
     #[serde(default)]
     pub content: Option<String>,
+    /// Streaming tool-call fragments. Use
+    /// [`crate::ToolCallAccumulator`] to reassemble.
     #[serde(default)]
     pub tool_calls: Option<Vec<ToolCall>>,
+    /// Streaming reasoning text fragment.
     #[serde(default)]
     pub reasoning: Option<String>,
 }
@@ -60,16 +78,23 @@ pub type LogProbs = serde_json::Value;
 /// Legacy text-completions response.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompletionResponse {
+    /// Generation id.
     #[serde(default)]
     pub id: Option<String>,
+    /// Wire object discriminator.
     #[serde(default)]
     pub object: Option<String>,
+    /// Unix-seconds timestamp of generation.
     #[serde(default)]
     pub created: Option<u64>,
+    /// Model that produced the response.
     pub model: String,
+    /// Generated choices.
     pub choices: Vec<CompletionChoice>,
+    /// Token usage accounting.
     #[serde(default)]
     pub usage: Option<Usage>,
+    /// Provider that served the request.
     #[serde(default)]
     pub provider: Option<String>,
 }
@@ -77,12 +102,17 @@ pub struct CompletionResponse {
 /// One choice in a legacy completion response.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompletionChoice {
+    /// Choice index within the response.
     pub index: u32,
+    /// Generated text.
     pub text: String,
+    /// Why generation stopped.
     #[serde(default)]
     pub finish_reason: Option<String>,
+    /// Provider-native finish reason, when different.
     #[serde(default)]
     pub native_finish_reason: Option<String>,
+    /// Token-level log probabilities.
     #[serde(default)]
     pub logprobs: Option<LogProbs>,
 }
@@ -90,16 +120,22 @@ pub struct CompletionChoice {
 /// Token usage accounting.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Usage {
+    /// Tokens consumed by the prompt.
     #[serde(default)]
     pub prompt_tokens: Option<u32>,
+    /// Tokens generated for the completion.
     #[serde(default)]
     pub completion_tokens: Option<u32>,
+    /// Sum of prompt + completion tokens (when reported).
     #[serde(default)]
     pub total_tokens: Option<u32>,
+    /// Breakdown of prompt tokens (cached vs. fresh).
     #[serde(default)]
     pub prompt_tokens_details: Option<TokenDetails>,
+    /// Breakdown of completion tokens (reasoning vs. visible).
     #[serde(default)]
     pub completion_tokens_details: Option<TokenDetails>,
+    /// USD cost of the request, when reported.
     #[serde(default)]
     pub cost: Option<f64>,
 }
@@ -107,8 +143,10 @@ pub struct Usage {
 /// Sub-breakdown of token usage (cached, reasoning, etc.).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct TokenDetails {
+    /// Tokens served from cache.
     #[serde(default)]
     pub cached_tokens: Option<u32>,
+    /// Tokens spent on hidden reasoning.
     #[serde(default)]
     pub reasoning_tokens: Option<u32>,
 }
