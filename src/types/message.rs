@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::ToolCall;
+use super::{Annotation, ToolCall};
 
 /// Role of a chat message author.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -29,6 +29,9 @@ pub struct Message {
     /// Streaming reasoning chunks come through [`crate::types::Delta::reasoning`].
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reasoning: Option<String>,
+    /// Typed annotations attached by plugins (e.g. web-search citations).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub annotations: Option<Vec<Annotation>>,
 }
 
 /// Message content: either a plain string or an array of typed parts.
@@ -118,6 +121,7 @@ impl Message {
             tool_calls: None,
             tool_call_id: Some(tool_call_id.into()),
             reasoning: None,
+            annotations: None,
         }
     }
 
@@ -129,6 +133,7 @@ impl Message {
             tool_calls: None,
             tool_call_id: None,
             reasoning: None,
+            annotations: None,
         }
     }
 
