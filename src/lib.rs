@@ -10,11 +10,13 @@ pub mod client;
 pub mod error;
 mod request;
 pub mod retry;
+pub mod stream;
 pub mod types;
 
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, Result};
 pub use retry::RetryConfig;
+pub use stream::EventStream;
 pub use types::{
     ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest, CompletionResponse,
     Content, ContentPart, Delta, FunctionCall, Message, Provider, ReasoningConfig, ResponseFormat,
