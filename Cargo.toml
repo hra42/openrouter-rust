@@ -28,6 +28,7 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["full", "test-util"] }
 wiremock = "0.6"
 pretty_assertions = "1"
+clap = { version = "4", features = ["derive"] }
 
 [features]
 default = []
@@ -37,6 +38,9 @@ beta = []
 [[example]]
 name = "responses"
 required-features = ["beta"]
+
+[[example]]
+name = "e2e"
 
 [lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }

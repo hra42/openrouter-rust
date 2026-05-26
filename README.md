@@ -86,6 +86,24 @@ while let Some(chunk) = stream.next().await {
 
 > The exact API may shift during Phase 1 (foundation). Locked-in shape lands with the v0.1.0 release.
 
+## End-to-end smoke tests
+
+The `e2e` example is a single binary that mirrors the Go SDK's
+`cmd/openrouter-test/` layout. Every subcommand hits the live OpenRouter API
+using `google/gemini-3.1-flash-lite` by default.
+
+```bash
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- --help
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- chat
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- stream
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- tools
+```
+
+Subcommands: `chat`, `stream`, `completion`, `tools`, `transforms`,
+`websearch`, `models`, `endpoints`, `providers`, `credits`, `activity`,
+`key`, `listkeys`, `createkey`, `updatekey`, `deletekey`. The `*key`
+provisioning subcommands require a provisioning key (not a runtime key).
+
 ## Roadmap
 
 Work is broken into 7 phases:
