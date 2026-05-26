@@ -1,5 +1,6 @@
 //! Shared serde types for messages, requests, and responses.
 
+mod account;
 mod common;
 mod discovery;
 mod message;
@@ -7,6 +8,7 @@ mod multimodal;
 mod request;
 mod response;
 
+pub use account::{CreditsData, CreditsResponse};
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
     JsonSchema, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolCall, ToolChoice,
