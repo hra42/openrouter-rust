@@ -8,6 +8,7 @@
 
 pub mod client;
 pub mod error;
+pub mod mcp;
 mod request;
 pub mod retry;
 pub mod stream;
