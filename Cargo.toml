@@ -1,5 +1,5 @@
 [package]
-name = "openrouter-rust"
+name = "openrouter-client"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
@@ -24,9 +24,10 @@ include = [
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-# Package is published as `openrouter-rust` on crates.io because the
-# `openrouter` name was taken. The library identifier stays `openrouter`
-# so user code still writes `use openrouter::...`.
+# Package is published as `openrouter-client` on crates.io because
+# `openrouter`, `openrouter-rust`, and `openrouter-rs` were all taken.
+# The library identifier stays `openrouter` so user code still writes
+# `use openrouter::...`.
 [lib]
 name = "openrouter"
 

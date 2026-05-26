@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Async Rust SDK for the [OpenRouter](https://openrouter.ai) API. This is a port of [openrouter-go](https://github.com/hra42/openrouter-go); behavior and defaults are kept in sync with the Go SDK on purpose (e.g. retry constants in `src/retry.rs` mirror the Go ones).
 
-**Crate name on crates.io is `openrouter-rust`** (the `openrouter` name was already taken). The library identifier stays `openrouter`, so user code writes `use openrouter::...`. The split is configured in `Cargo.toml` via `[package] name = "openrouter-rust"` + `[lib] name = "openrouter"`. When updating README / install snippets / docs.rs / crates.io links, always use `openrouter-rust`. When updating Rust source (imports, doctests, recipes), use `openrouter`.
+**Crate name on crates.io is `openrouter-client`** (the `openrouter`, `openrouter-rust`, and `openrouter-rs` names were all already taken — `openrouter-rs` and `openrouter_rs` normalize to the same name on crates.io). The library identifier stays `openrouter`, so user code writes `use openrouter::...`. The split is configured in `Cargo.toml` via `[package] name = "openrouter-client"` + `[lib] name = "openrouter"`. When updating README / install snippets / docs.rs / crates.io links, use `openrouter-client`. When updating Rust source (imports, doctests, recipes), use `openrouter`. The **GitHub repo** is still `openrouter-rust` — keep that in repository URLs, CI badges, and the `[0.1.0]` link in CHANGELOG.md.
 
 Status: Phase 1–7 are landed; v0.1.0 is the current target on crates.io. See the roadmap in `README.md`.
 
@@ -17,7 +17,7 @@ cargo build
 cargo test                                       # all tests
 cargo test --all-features
 cargo test <name>                                # single test by name substring
-cargo test -p openrouter-rust <module>::tests::  # tests in a module (package name)
+cargo test -p openrouter-client <module>::tests::  # tests in a module (package name)
 cargo fmt --all -- --check                       # CI-equivalent fmt check
 cargo clippy --all-targets --all-features -- -D warnings   # CI-equivalent
 cargo deny check                                 # license/advisory/ban audit (CI runs this)

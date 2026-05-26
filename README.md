@@ -1,7 +1,7 @@
 # openrouter-rust
 
-[![Crates.io](https://img.shields.io/crates/v/openrouter-rust.svg)](https://crates.io/crates/openrouter-rust)
-[![Docs.rs](https://docs.rs/openrouter-rust/badge.svg)](https://docs.rs/openrouter-rust)
+[![Crates.io](https://img.shields.io/crates/v/openrouter-client.svg)](https://crates.io/crates/openrouter-client)
+[![Docs.rs](https://docs.rs/openrouter-client/badge.svg)](https://docs.rs/openrouter-client)
 [![CI](https://github.com/hra42/openrouter-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/hra42/openrouter-rust/actions/workflows/ci.yml)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](./LICENSE)
 
@@ -12,18 +12,18 @@ behavior and defaults are kept in sync with the Go SDK on purpose.
 ## Install
 
 ```bash
-cargo add openrouter-rust
+cargo add openrouter-client
 ```
 
-The crate is published as `openrouter-rust` on crates.io (the
-`openrouter` name was already taken), but it imports as `openrouter` —
-your code writes `use openrouter::...`.
+The crate is published as `openrouter-client` on crates.io (`openrouter`,
+`openrouter-rust`, and `openrouter-rs` were all already taken), but it
+imports as `openrouter` — your code writes `use openrouter::...`.
 
 MSRV is **1.75**. Optional `beta` feature gates the Responses API:
 
 ```toml
 [dependencies]
-openrouter-rust = { version = "0.1", features = ["beta"] }
+openrouter-client = { version = "0.1", features = ["beta"] }
 ```
 
 ## Quickstart

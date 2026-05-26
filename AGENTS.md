@@ -12,13 +12,15 @@ defaults are kept in sync with the Go SDK on purpose. When you change
 retry constants, error classifications, or other defaults, check the Go
 SDK first and call out any intentional divergence in the commit message.
 
-The package is published as `openrouter-rust` on crates.io because the
-`openrouter` name was already taken. The library identifier stays
-`openrouter`, so user code writes `use openrouter::...`. When you touch
-README, docs.rs, install snippets, or other consumer-facing references,
-use `openrouter-rust`. When you touch Rust source, doctests, or recipes,
-use `openrouter`. The split lives in `Cargo.toml` (`[package] name` vs
-`[lib] name`).
+The package is published as `openrouter-client` on crates.io because the
+`openrouter`, `openrouter-rust`, and `openrouter-rs` names were all
+already taken. The library identifier stays `openrouter`, so user code
+writes `use openrouter::...`. When you touch README, docs.rs, install
+snippets, or other crates.io-facing references, use `openrouter-client`.
+When you touch Rust source, doctests, or recipes, use `openrouter`. The
+**GitHub repo** is still `openrouter-rust` — keep that in repository
+URLs and CI badge sources. The split lives in `Cargo.toml`
+(`[package] name` vs `[lib] name`).
 
 ## Commands you can run
 

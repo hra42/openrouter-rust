@@ -1,4 +1,4 @@
-# openrouter-rust 0.1.0
+# openrouter-client 0.1.0
 
 First release of the Rust SDK for the [OpenRouter](https://openrouter.ai)
 API. This is a port of [openrouter-go](https://github.com/hra42/openrouter-go);
@@ -29,19 +29,20 @@ behavior and defaults are kept in sync with the Go SDK on purpose.
 
 ## Install
 
-The crate is published as `openrouter-rust` on crates.io (the
-`openrouter` name was already taken). The library identifier stays
-`openrouter`, so code writes `use openrouter::...`.
+The crate is published as `openrouter-client` on crates.io (the
+`openrouter`, `openrouter-rust`, and `openrouter-rs` names were all
+already taken). The library identifier stays `openrouter`, so code
+writes `use openrouter::...`.
 
 ```bash
-cargo add openrouter-rust
+cargo add openrouter-client
 ```
 
 Enable the beta Responses API:
 
 ```toml
 [dependencies]
-openrouter-rust = { version = "0.1", features = ["beta"] }
+openrouter-client = { version = "0.1", features = ["beta"] }
 ```
 
 ## Verification
