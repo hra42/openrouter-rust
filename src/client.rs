@@ -13,7 +13,7 @@ use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
-    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider,
+    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -165,6 +165,14 @@ impl Client {
             percent_encode_segment(slug),
         );
         request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// List all providers available through OpenRouter.
+    ///
+    /// `GET /providers`. Returns the provider name, slug, and policy /
+    /// status-page URLs (when published).
+    pub async fn list_providers(&self) -> Result<ProvidersResponse> {
+        request::execute_json_get(self, "providers", &[]).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build
