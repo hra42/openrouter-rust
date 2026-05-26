@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     let req = ChatCompletionRequest {
-        model: "openai/gpt-4o-mini".into(),
+        model: "google/gemini-3.1-flash-lite".into(),
         messages: vec![
             Message::system("You are a concise assistant."),
             Message::user("In one short sentence, what is OpenRouter?"),
