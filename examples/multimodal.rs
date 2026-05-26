@@ -18,7 +18,7 @@ use openrouter::{
 
 const MODEL: &str = "google/gemini-3.1-flash-lite";
 const IMAGE_URL: &str = "https://hra42.com/test-image.png";
-const PDF_URL: &str = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+const PDF_URL: &str = "https://bitcoin.org/bitcoin.pdf";
 
 // 1x1 transparent PNG.
 const TINY_PNG: &[u8] = &[
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vec![create_user_message_with_pdf(
             "Summarize this PDF in one sentence.",
             PDF_URL,
-            "dummy.pdf",
+            "bitcoin.pdf",
         )],
     )
     .with_plugins(vec![create_file_parser_plugin(FileParserEngine::PdfText)]);

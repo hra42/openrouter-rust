@@ -411,8 +411,8 @@ fn run_multimodal(client: &Client) -> Fut {
             MODEL,
             vec![openrouter::create_user_message_with_pdf(
                 "Summarize this PDF in one sentence.",
-                "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-                "dummy.pdf",
+                "https://bitcoin.org/bitcoin.pdf",
+                "bitcoin.pdf",
             )],
         )
         .with_plugins(vec![create_file_parser_plugin(FileParserEngine::PdfText)]);
