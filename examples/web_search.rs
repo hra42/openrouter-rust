@@ -43,6 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         url_citation.url
                     );
                 }
+                Annotation::File { file } => {
+                    println!("file annotation: {}", file.filename);
+                }
             }
         }
     }

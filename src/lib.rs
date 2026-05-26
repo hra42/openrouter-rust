@@ -21,8 +21,17 @@ pub use retry::RetryConfig;
 pub use stream::EventStream;
 pub use tool_call_accumulator::ToolCallAccumulator;
 pub use types::{
-    Annotation, ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest,
-    CompletionResponse, Content, ContentPart, Delta, FunctionCall, FunctionDef, Message, Plugin,
-    Provider, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall, ToolChoice, UrlCitation,
-    Usage, WebPluginConfig,
+    create_file_parser_plugin, create_user_message_with_audio,
+    create_user_message_with_audio_bytes, create_user_message_with_base64_image,
+    create_user_message_with_base64_image_bytes, create_user_message_with_base64_pdf,
+    create_user_message_with_files, create_user_message_with_image,
+    create_user_message_with_image_detail, create_user_message_with_images,
+    create_user_message_with_pdf, create_user_message_with_text_content,
+    create_user_message_with_text_file, create_user_message_with_text_files,
+    encode_image_bytes_to_base64, encode_image_to_base64, Annotation, AudioFormat,
+    ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest, CompletionResponse,
+    Content, ContentBuilder, ContentPart, Delta, File, FileAnnotation, FileParserEngine,
+    FilePdfConfig, FilePluginConfig, FileRef, FunctionCall, FunctionDef, ImageDetail, ImageUrl,
+    InputAudio, Message, Plugin, Provider, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall,
+    ToolChoice, UrlCitation, Usage, WebPluginConfig,
 };

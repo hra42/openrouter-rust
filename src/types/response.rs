@@ -189,6 +189,7 @@ mod tests {
                 assert_eq!(url_citation.url, "https://example.com");
                 assert_eq!(url_citation.title.as_deref(), Some("Example"));
             }
+            other => panic!("unexpected annotation: {other:?}"),
         }
     }
 
