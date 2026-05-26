@@ -29,15 +29,19 @@ behavior and defaults are kept in sync with the Go SDK on purpose.
 
 ## Install
 
+The crate is published as `openrouter-rust` on crates.io (the
+`openrouter` name was already taken). The library identifier stays
+`openrouter`, so code writes `use openrouter::...`.
+
 ```bash
-cargo add openrouter
+cargo add openrouter-rust
 ```
 
 Enable the beta Responses API:
 
 ```toml
 [dependencies]
-openrouter = { version = "0.1", features = ["beta"] }
+openrouter-rust = { version = "0.1", features = ["beta"] }
 ```
 
 ## Verification

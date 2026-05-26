@@ -1,5 +1,5 @@
 [package]
-name = "openrouter"
+name = "openrouter-rust"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
@@ -23,6 +23,12 @@ include = [
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+# Package is published as `openrouter-rust` on crates.io because the
+# `openrouter` name was taken. The library identifier stays `openrouter`
+# so user code still writes `use openrouter::...`.
+[lib]
+name = "openrouter"
 
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
