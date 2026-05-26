@@ -12,9 +12,9 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
-    CreditsResponse, KeyResponse, ListModelsOptions, ModelEndpointsResponse, ModelsResponse,
-    Provider, ProvidersResponse,
+    ActivityOptions, ActivityResponse, ChatCompletionRequest, ChatCompletionResponse,
+    CompletionRequest, CompletionResponse, CreditsResponse, KeyResponse, ListModelsOptions,
+    ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -191,6 +191,20 @@ impl Client {
     /// configured rate limit.
     pub async fn get_key(&self) -> Result<KeyResponse> {
         request::execute_json_get(self, "key", &[]).await
+    }
+
+    /// Daily activity grouped by model endpoint for the last 30 completed UTC days.
+    ///
+    /// `GET /activity`. **Requires a provisioning key** — using a regular
+    /// inference key returns 401. If [`ActivityOptions::date`] is set
+    /// (`YYYY-MM-DD`), results are filtered to that single UTC day.
+    ///
+    /// When ingesting on a schedule, wait ~30 minutes past the UTC boundary
+    /// before requesting the previous day: events are aggregated by request
+    /// start time, and some reasoning models take a few minutes to complete.
+    pub async fn get_activity(&self, opts: Option<&ActivityOptions>) -> Result<ActivityResponse> {
+        let query = opts.map(ActivityOptions::to_query).unwrap_or_default();
+        request::execute_json_get(self, "activity", &query).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build

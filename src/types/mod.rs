@@ -8,7 +8,10 @@ mod multimodal;
 mod request;
 mod response;
 
-pub use account::{CreditsData, CreditsResponse, KeyData, KeyRateLimit, KeyResponse};
+pub use account::{
+    ActivityData, ActivityOptions, ActivityResponse, CreditsData, CreditsResponse, KeyData,
+    KeyRateLimit, KeyResponse,
+};
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
     JsonSchema, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolCall, ToolChoice,
