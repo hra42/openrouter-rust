@@ -105,7 +105,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "bitcoin.pdf",
         )],
     )
-    .with_plugins(vec![create_file_parser_plugin(FileParserEngine::PdfText)]);
+    // `native` lets Gemini's built-in PDF support handle the file; `pdf-text`
+    // is cheaper but trips on multi-column PDFs like the Bitcoin whitepaper.
+    .with_plugins(vec![create_file_parser_plugin(FileParserEngine::Native)]);
     let pdf_resp = client.chat_complete(pdf_req).await?;
     let pdf_msg = pdf_resp
         .choices

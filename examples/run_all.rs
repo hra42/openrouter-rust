@@ -415,7 +415,7 @@ fn run_multimodal(client: &Client) -> Fut {
                 "bitcoin.pdf",
             )],
         )
-        .with_plugins(vec![create_file_parser_plugin(FileParserEngine::PdfText)]);
+        .with_plugins(vec![create_file_parser_plugin(FileParserEngine::Native)]);
         let pdf_resp = client.chat_complete(pdf_req).await?;
         let pdf_msg = pdf_resp
             .choices
