@@ -141,6 +141,26 @@ pub struct JsonSchema {
     pub strict: Option<bool>,
 }
 
+impl ResponseFormat {
+    /// Simple JSON-object mode: the model is asked to emit a valid JSON
+    /// object, but the shape is not constrained.
+    pub fn json_object() -> Self {
+        ResponseFormat::JsonObject
+    }
+
+    /// Constrain the response to a named JSON schema.
+    pub fn json_schema(name: impl Into<String>, strict: bool, schema: serde_json::Value) -> Self {
+        ResponseFormat::JsonSchema {
+            json_schema: JsonSchema {
+                name: name.into(),
+                description: None,
+                schema,
+                strict: Some(strict),
+            },
+        }
+    }
+}
+
 /// Provider routing controls. Fleshed out further in Phase 3.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Provider {
