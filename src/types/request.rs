@@ -80,6 +80,29 @@ impl ChatCompletionRequest {
         self.tool_choice = Some(choice);
         self
     }
+
+    /// Set the response format directly.
+    pub fn with_response_format(mut self, format: ResponseFormat) -> Self {
+        self.response_format = Some(format);
+        self
+    }
+
+    /// Constrain responses to a named JSON schema. Sugar over
+    /// `with_response_format(ResponseFormat::json_schema(...))`.
+    pub fn with_json_schema(
+        self,
+        name: impl Into<String>,
+        strict: bool,
+        schema: serde_json::Value,
+    ) -> Self {
+        self.with_response_format(ResponseFormat::json_schema(name, strict, schema))
+    }
+
+    /// Ask the model to emit a JSON object (no schema). Sugar over
+    /// `with_response_format(ResponseFormat::json_object())`.
+    pub fn with_json_mode(self) -> Self {
+        self.with_response_format(ResponseFormat::json_object())
+    }
 }
 
 /// Legacy text-completions request payload.
@@ -148,6 +171,34 @@ mod tests {
         assert_eq!(
             v,
             json!({"type":"function","function":{"name":"get_weather"}})
+        );
+    }
+
+    #[test]
+    fn with_json_mode_serializes() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")]).with_json_mode();
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["response_format"], json!({"type":"json_object"}));
+    }
+
+    #[test]
+    fn with_json_schema_serializes_strict_named_schema() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")]).with_json_schema(
+            "answer",
+            true,
+            json!({"type":"object","properties":{"x":{"type":"number"}}}),
+        );
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            v["response_format"],
+            json!({
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "answer",
+                    "schema": {"type":"object","properties":{"x":{"type":"number"}}},
+                    "strict": true
+                }
+            })
         );
     }
 }
