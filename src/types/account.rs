@@ -27,3 +27,42 @@ impl CreditsData {
         self.total_credits - self.total_usage
     }
 }
+
+/// Response from `GET /key`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct KeyResponse {
+    #[serde(default)]
+    pub data: KeyData,
+}
+
+/// Information about the current API key.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct KeyData {
+    #[serde(default)]
+    pub label: String,
+    /// Configured spend limit. `None` if no limit is set.
+    #[serde(default)]
+    pub limit: Option<f64>,
+    #[serde(default)]
+    pub usage: f64,
+    #[serde(default)]
+    pub is_free_tier: bool,
+    /// Remaining spend allowance. `None` when no limit is set.
+    #[serde(default)]
+    pub limit_remaining: Option<f64>,
+    /// `true` if this is a provisioning key (can manage other keys).
+    #[serde(default)]
+    pub is_provisioning_key: bool,
+    #[serde(default)]
+    pub rate_limit: Option<KeyRateLimit>,
+}
+
+/// Rate limit applied to an API key.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct KeyRateLimit {
+    /// Window (e.g. `"10s"`).
+    #[serde(default)]
+    pub interval: String,
+    #[serde(default)]
+    pub requests: f64,
+}

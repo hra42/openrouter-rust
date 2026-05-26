@@ -13,8 +13,8 @@ use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
-    CreditsResponse, ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider,
-    ProvidersResponse,
+    CreditsResponse, KeyResponse, ListModelsOptions, ModelEndpointsResponse, ModelsResponse,
+    Provider, ProvidersResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -182,6 +182,15 @@ impl Client {
     /// balance.
     pub async fn get_credits(&self) -> Result<CreditsResponse> {
         request::execute_json_get(self, "credits", &[]).await
+    }
+
+    /// Retrieve metadata about the currently authenticated API key.
+    ///
+    /// `GET /key`. Returns label, configured spend limit, current usage,
+    /// remaining balance, free-tier flag, provisioning-key flag, and any
+    /// configured rate limit.
+    pub async fn get_key(&self) -> Result<KeyResponse> {
+        request::execute_json_get(self, "key", &[]).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build
