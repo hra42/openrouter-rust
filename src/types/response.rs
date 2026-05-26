@@ -7,7 +7,10 @@ use super::{Message, Role, ToolCall};
 /// Chat-completions response.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ChatCompletionResponse {
-    pub id: String,
+    /// Generation id. Optional because some providers omit it on
+    /// streaming chunks that only carry tool-call deltas.
+    #[serde(default)]
+    pub id: Option<String>,
     #[serde(default)]
     pub object: Option<String>,
     #[serde(default)]
@@ -57,7 +60,8 @@ pub type LogProbs = serde_json::Value;
 /// Legacy text-completions response.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompletionResponse {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     #[serde(default)]
     pub object: Option<String>,
     #[serde(default)]
@@ -130,7 +134,7 @@ mod tests {
             "usage":{"prompt_tokens":3,"completion_tokens":1,"total_tokens":4}
         }"#;
         let r: ChatCompletionResponse = serde_json::from_str(raw).unwrap();
-        assert_eq!(r.id, "gen-1");
+        assert_eq!(r.id.as_deref(), Some("gen-1"));
         assert_eq!(r.choices.len(), 1);
         let c = &r.choices[0];
         assert_eq!(c.message.as_ref().unwrap().content_text(), Some("hi"));

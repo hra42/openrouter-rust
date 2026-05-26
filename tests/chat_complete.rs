@@ -51,7 +51,7 @@ async fn chat_complete_happy_path() {
         ..Default::default()
     };
     let resp = c.chat_complete(req).await.unwrap();
-    assert_eq!(resp.id, "gen-1");
+    assert_eq!(resp.id.as_deref(), Some("gen-1"));
     assert_eq!(resp.model, "anthropic/claude-3-opus");
     assert_eq!(resp.choices.len(), 1);
     assert_eq!(
@@ -205,5 +205,5 @@ async fn chat_complete_429_then_success() {
         ..Default::default()
     };
     let resp = c.chat_complete(req).await.unwrap();
-    assert_eq!(resp.id, "g");
+    assert_eq!(resp.id.as_deref(), Some("g"));
 }

@@ -3,10 +3,16 @@
 use serde::{Deserialize, Serialize};
 
 /// A function-call invocation requested by the model.
+///
+/// Both `id` and `kind` are optional because OpenRouter streams tool calls
+/// as fragments: the first chunk for an `index` typically carries `id` +
+/// `type` + `function.name`, and continuation chunks for the same `index`
+/// carry only additional `function.arguments` bytes.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ToolCall {
+    #[serde(default)]
     pub id: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub kind: String,
     pub function: FunctionCall,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -57,6 +63,62 @@ pub enum ToolChoice {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FunctionRef {
     pub name: String,
+}
+
+impl ToolChoice {
+    /// Let the model decide whether to call a tool.
+    pub fn auto() -> Self {
+        ToolChoice::Mode("auto".to_string())
+    }
+
+    /// Forbid tool calls.
+    pub fn none() -> Self {
+        ToolChoice::Mode("none".to_string())
+    }
+
+    /// Require the model to call some tool.
+    pub fn required() -> Self {
+        ToolChoice::Mode("required".to_string())
+    }
+
+    /// Force the model to call a specific function by name.
+    pub fn function(name: impl Into<String>) -> Self {
+        ToolChoice::Specific {
+            kind: "function".to_string(),
+            function: FunctionRef { name: name.into() },
+        }
+    }
+}
+
+impl Tool {
+    /// Build a function tool from a `FunctionDef`.
+    pub fn function(def: FunctionDef) -> Self {
+        Tool::Function { function: def }
+    }
+}
+
+impl FunctionDef {
+    /// Construct a new function definition with a JSON-Schema parameter object.
+    pub fn new(name: impl Into<String>, parameters: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            parameters: Some(parameters),
+            strict: None,
+        }
+    }
+
+    /// Attach a human-readable description.
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    /// Toggle strict schema adherence.
+    pub fn with_strict(mut self, strict: bool) -> Self {
+        self.strict = Some(strict);
+        self
+    }
 }
 
 /// Response-format hint (JSON mode or JSON schema).
