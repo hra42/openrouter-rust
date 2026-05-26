@@ -12,15 +12,19 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ActivityOptions, ActivityResponse, BulkAddWorkspaceMembersResponse,
-    BulkRemoveWorkspaceMembersResponse, BulkWorkspaceMembersRequest, ChatCompletionRequest,
-    ChatCompletionResponse, CompletionRequest, CompletionResponse, CreateKeyRequest,
-    CreateKeyResponse, CreateWorkspaceRequest, CreateWorkspaceResponse, CreditsResponse,
+    ActivityOptions, ActivityResponse, AssignKeysRequest, AssignKeysResponse, AssignMembersRequest,
+    AssignMembersResponse, BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse,
+    BulkWorkspaceMembersRequest, ChatCompletionRequest, ChatCompletionResponse, CompletionRequest,
+    CompletionResponse, CreateGuardrailRequest, CreateKeyRequest, CreateKeyResponse,
+    CreateWorkspaceRequest, CreateWorkspaceResponse, CreditsResponse, DeleteGuardrailResponse,
     DeleteKeyResponse, DeleteWorkspaceResponse, GetKeyByHashResponse, GetWorkspaceResponse,
-    KeyResponse, ListKeysOptions, ListKeysResponse, ListModelsOptions,
-    ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
-    ListWorkspacesResponse, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
+    Guardrail, KeyResponse, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
+    ListKeysOptions, ListKeysResponse, ListModelsOptions, ListOrganizationMembersOptions,
+    ListOrganizationMembersResponse, ListWorkspacesOptions, ListWorkspacesResponse,
+    ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, UpdateGuardrailRequest,
     UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    ZdrEndpointsResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -276,6 +280,229 @@ impl Client {
         }
         let path = format!("keys/{}", percent_encode_segment(hash));
         request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// List guardrails for the organization.
+    ///
+    /// `GET /guardrails`. **Requires a provisioning key.**
+    pub async fn list_guardrails(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails", &query).await
+    }
+
+    /// Create a new guardrail. `name` is required.
+    ///
+    /// `POST /guardrails`. **Requires a provisioning key.**
+    pub async fn create_guardrail(&self, req: &CreateGuardrailRequest) -> Result<Guardrail> {
+        if req.name.is_empty() {
+            return Err(Error::InvalidInput("name is required"));
+        }
+        request::execute_json(self, "guardrails", req).await
+    }
+
+    /// Fetch a single guardrail by ID.
+    ///
+    /// `GET /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn get_guardrail(&self, id: &str) -> Result<Guardrail> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Update an existing guardrail. Pass only the fields you want to change
+    /// on [`UpdateGuardrailRequest`].
+    ///
+    /// `PATCH /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn update_guardrail(
+        &self,
+        id: &str,
+        req: &UpdateGuardrailRequest,
+    ) -> Result<Guardrail> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_method(self, reqwest::Method::PATCH, &path, Some(req)).await
+    }
+
+    /// Delete a guardrail by ID. **Irreversible.**
+    ///
+    /// `DELETE /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn delete_guardrail(&self, id: &str) -> Result<DeleteGuardrailResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// List key assignments across all guardrails.
+    ///
+    /// `GET /guardrails/key-assignments`. **Requires a provisioning key.**
+    pub async fn list_all_guardrail_key_assignments(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailKeyAssignmentsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails/key-assignments", &query).await
+    }
+
+    /// List key assignments for a specific guardrail.
+    ///
+    /// `GET /guardrails/{id}/key-assignments`. **Requires a provisioning key.**
+    pub async fn list_guardrail_key_assignments(
+        &self,
+        id: &str,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailKeyAssignmentsResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, &path, &query).await
+    }
+
+    /// Assign API keys (by hash) to a guardrail.
+    ///
+    /// `POST /guardrails/{id}/key-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn assign_keys_to_guardrail(
+        &self,
+        id: &str,
+        req: &AssignKeysRequest,
+    ) -> Result<AssignKeysResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.key_hashes.is_empty() {
+            return Err(Error::InvalidInput("key_hashes cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        request::execute_json(self, &path, req).await
+    }
+
+    /// Remove key assignments from a guardrail.
+    ///
+    /// `DELETE /guardrails/{id}/key-assignments` (with body). **Requires a
+    /// provisioning key.**
+    pub async fn unassign_keys_from_guardrail(
+        &self,
+        id: &str,
+        req: &AssignKeysRequest,
+    ) -> Result<()> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.key_hashes.is_empty() {
+            return Err(Error::InvalidInput("key_hashes cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// List member assignments across all guardrails.
+    ///
+    /// `GET /guardrails/member-assignments`. **Requires a provisioning key.**
+    pub async fn list_all_guardrail_member_assignments(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailMemberAssignmentsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails/member-assignments", &query).await
+    }
+
+    /// List member assignments for a specific guardrail.
+    ///
+    /// `GET /guardrails/{id}/member-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn list_guardrail_member_assignments(
+        &self,
+        id: &str,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailMemberAssignmentsResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, &path, &query).await
+    }
+
+    /// Assign organization members (by user id) to a guardrail.
+    ///
+    /// `POST /guardrails/{id}/member-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn assign_members_to_guardrail(
+        &self,
+        id: &str,
+        req: &AssignMembersRequest,
+    ) -> Result<AssignMembersResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.member_user_ids.is_empty() {
+            return Err(Error::InvalidInput("member_user_ids cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        request::execute_json(self, &path, req).await
+    }
+
+    /// Remove member assignments from a guardrail.
+    ///
+    /// `DELETE /guardrails/{id}/member-assignments` (with body). **Requires a
+    /// provisioning key.**
+    pub async fn unassign_members_from_guardrail(
+        &self,
+        id: &str,
+        req: &AssignMembersRequest,
+    ) -> Result<()> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.member_user_ids.is_empty() {
+            return Err(Error::InvalidInput("member_user_ids cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// List endpoints compatible with Zero Data Retention.
+    ///
+    /// `GET /endpoints/zdr`. Returns the endpoints that honor ZDR across all
+    /// providers — useful as a preview before enforcing ZDR on a guardrail or
+    /// key. No authentication tier requirement beyond a normal API key.
+    pub async fn list_zdr_endpoints(&self) -> Result<ZdrEndpointsResponse> {
+        request::execute_json_get(self, "endpoints/zdr", &[]).await
     }
 
     /// List members of the organization associated with the authenticated

@@ -3,6 +3,7 @@
 mod account;
 mod common;
 mod discovery;
+mod guardrails;
 mod message;
 mod multimodal;
 mod organization;
@@ -26,6 +27,14 @@ pub use discovery::{
     ModelEndpointPricing, ModelEndpointsArchitecture, ModelEndpointsData, ModelEndpointsResponse,
     ModelPerRequestLimits, ModelPricing, ModelTopProvider, ModelsResponse, ProviderInfo,
     ProvidersResponse,
+};
+pub use guardrails::{
+    AssignKeysRequest, AssignKeysResponse, AssignMembersRequest, AssignMembersResponse,
+    CreateGuardrailRequest, DeleteGuardrailResponse, Guardrail, GuardrailKeyAssignment,
+    GuardrailMemberAssignment, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
+    PercentileStats, PublicEndpoint, PublicEndpointPricing, ResetInterval, UpdateGuardrailRequest,
+    ZdrEndpointsResponse,
 };
 pub use message::{Content, ContentPart, FileRef, ImageUrl, InputAudio, Message, Role};
 pub use multimodal::{

@@ -42,9 +42,15 @@ pub use types::{
     ToolChoice, UpdateKeyRequest, UpdateKeyResponse, UrlCitation, Usage, WebPluginConfig,
 };
 pub use types::{
-    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateWorkspaceRequest,
-    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse,
+    AssignKeysRequest, AssignKeysResponse, AssignMembersRequest, AssignMembersResponse,
+    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateGuardrailRequest,
+    CreateWorkspaceRequest, CreateWorkspaceResponse, DeleteGuardrailResponse,
+    DeleteWorkspaceResponse, GetWorkspaceResponse, Guardrail, GuardrailKeyAssignment,
+    GuardrailMemberAssignment, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
     ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
-    ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, UpdateWorkspaceRequest,
-    UpdateWorkspaceResponse, Workspace, WorkspaceMember, WorkspaceMemberRole,
+    ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, PercentileStats,
+    PublicEndpoint, PublicEndpointPricing, ResetInterval, UpdateGuardrailRequest,
+    UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace, WorkspaceMember,
+    WorkspaceMemberRole, ZdrEndpointsResponse,
 };

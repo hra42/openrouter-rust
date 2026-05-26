@@ -116,6 +116,49 @@ where
     execute_request(client, method, path, &[], body_bytes).await
 }
 
+/// Execute a JSON request that returns no decoded body (success = 2xx with
+/// empty or ignored body). Used by endpoints like guardrail unassign that
+/// return 204 / `{}`.
+#[allow(dead_code)] // Consumed by the guardrails endpoints (HRA-145).
+pub(crate) async fn execute_no_content_method<Req>(
+    client: &Client,
+    method: Method,
+    path: &str,
+    body: Option<&Req>,
+) -> Result<()>
+where
+    Req: Serialize + ?Sized,
+{
+    let body_bytes = match body {
+        Some(b) => Some(serde_json::to_vec(b)?),
+        None => None,
+    };
+    let url = endpoint_url(client, path)?;
+    let headers = base_headers(client, ACCEPT_JSON)?;
+    let cfg = client.retry().clone();
+
+    run_with_retry(&cfg, || {
+        let url = url.clone();
+        let headers = headers.clone();
+        let body_bytes = body_bytes.clone();
+        let method = method.clone();
+        async move {
+            let mut req = client.http().request(method, url).headers(headers);
+            if let Some(b) = body_bytes {
+                req = req.body(b);
+            }
+            let resp = req.send().await?;
+            let status = resp.status();
+            if status.is_success() {
+                Ok(())
+            } else {
+                Err(api_error_from_response(resp, status).await)
+            }
+        }
+    })
+    .await
+}
+
 /// Shared inner loop for all JSON unary methods. Runs through [`run_with_retry`].
 async fn execute_request<Resp>(
     client: &Client,
