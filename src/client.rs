@@ -12,7 +12,7 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
+    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse, Provider,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -84,6 +84,7 @@ impl Client {
         mut req: ChatCompletionRequest,
     ) -> Result<ChatCompletionResponse> {
         req.stream = Some(false);
+        apply_model_suffix(&mut req.model, &mut req.provider);
         request::execute_json(self, "chat/completions", &req).await
     }
 
@@ -93,6 +94,7 @@ impl Client {
     /// [`Client::chat_complete`].
     pub async fn complete(&self, mut req: CompletionRequest) -> Result<CompletionResponse> {
         req.stream = Some(false);
+        apply_model_suffix(&mut req.model, &mut req.provider);
         request::execute_json(self, "completions", &req).await
     }
 
@@ -111,6 +113,7 @@ impl Client {
         mut req: ChatCompletionRequest,
     ) -> Result<EventStream<ChatCompletionResponse>> {
         req.stream = Some(true);
+        apply_model_suffix(&mut req.model, &mut req.provider);
         self.open_event_stream("chat/completions", &req).await
     }
 
@@ -122,6 +125,7 @@ impl Client {
         mut req: CompletionRequest,
     ) -> Result<EventStream<CompletionResponse>> {
         req.stream = Some(true);
+        apply_model_suffix(&mut req.model, &mut req.provider);
         self.open_event_stream("completions", &req).await
     }
 
@@ -255,6 +259,27 @@ impl ClientBuilder {
     }
 }
 
+/// Strip a `:nitro` or `:floor` suffix from `model` and project it onto
+/// `provider.sort` (`throughput` / `price` respectively). A caller-set
+/// `provider.sort` always wins — the suffix never overrides it.
+pub(crate) fn apply_model_suffix(model: &mut String, provider: &mut Option<Provider>) {
+    let sort = if let Some(stripped) = model.strip_suffix(":nitro") {
+        let new_model = stripped.to_string();
+        *model = new_model;
+        "throughput"
+    } else if let Some(stripped) = model.strip_suffix(":floor") {
+        let new_model = stripped.to_string();
+        *model = new_model;
+        "price"
+    } else {
+        return;
+    };
+    let p = provider.get_or_insert_with(Provider::default);
+    if p.sort.is_none() {
+        p.sort = Some(sort.to_string());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -326,5 +351,44 @@ mod tests {
             .unwrap();
         assert_eq!(c.retry().max_retries, 7);
         assert_eq!(c.retry().initial_delay, Duration::from_millis(250));
+    }
+
+    #[test]
+    fn nitro_suffix_maps_to_throughput_sort() {
+        let mut m = "openai/gpt-4o:nitro".to_string();
+        let mut p = None;
+        apply_model_suffix(&mut m, &mut p);
+        assert_eq!(m, "openai/gpt-4o");
+        assert_eq!(p.unwrap().sort.as_deref(), Some("throughput"));
+    }
+
+    #[test]
+    fn floor_suffix_maps_to_price_sort() {
+        let mut m = "anthropic/claude-3:floor".to_string();
+        let mut p = None;
+        apply_model_suffix(&mut m, &mut p);
+        assert_eq!(m, "anthropic/claude-3");
+        assert_eq!(p.unwrap().sort.as_deref(), Some("price"));
+    }
+
+    #[test]
+    fn caller_set_sort_wins_over_suffix() {
+        let mut m = "openai/gpt-4o:nitro".to_string();
+        let mut p = Some(Provider {
+            sort: Some("latency".to_string()),
+            ..Provider::default()
+        });
+        apply_model_suffix(&mut m, &mut p);
+        assert_eq!(m, "openai/gpt-4o");
+        assert_eq!(p.unwrap().sort.as_deref(), Some("latency"));
+    }
+
+    #[test]
+    fn unknown_suffix_passes_through() {
+        let mut m = "openai/gpt-4o:exotic".to_string();
+        let mut p = None;
+        apply_model_suffix(&mut m, &mut p);
+        assert_eq!(m, "openai/gpt-4o:exotic");
+        assert!(p.is_none());
     }
 }

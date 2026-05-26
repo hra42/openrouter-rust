@@ -186,6 +186,89 @@ pub struct Provider {
     pub zdr: Option<bool>,
 }
 
+impl Provider {
+    /// New, empty provider-routing config.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Ordered preference list of provider slugs.
+    pub fn with_order<S, I>(mut self, order: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.order = Some(order.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Sort strategy: `"throughput"`, `"price"`, or `"latency"`.
+    pub fn with_sort(mut self, sort: impl Into<String>) -> Self {
+        self.sort = Some(sort.into());
+        self
+    }
+
+    /// Whether OpenRouter may fall back to other providers if the preferred ones fail.
+    pub fn with_allow_fallbacks(mut self, allow: bool) -> Self {
+        self.allow_fallbacks = Some(allow);
+        self
+    }
+
+    /// Restrict to this set of providers.
+    pub fn with_only<S, I>(mut self, only: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.only = Some(only.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Exclude these providers from consideration.
+    pub fn with_ignore<S, I>(mut self, ignore: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.ignore = Some(ignore.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Permitted quantization tiers (e.g. `"fp8"`, `"int4"`).
+    pub fn with_quantizations<S, I>(mut self, q: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.quantizations = Some(q.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Per-token max price filter (free-form value, see OpenRouter docs).
+    pub fn with_max_price(mut self, price: serde_json::Value) -> Self {
+        self.max_price = Some(price);
+        self
+    }
+
+    /// Data-collection policy: `"allow"` or `"deny"`.
+    pub fn with_data_collection(mut self, policy: impl Into<String>) -> Self {
+        self.data_collection = Some(policy.into());
+        self
+    }
+
+    /// Require that providers accept all supplied sampling parameters.
+    pub fn with_require_parameters(mut self, required: bool) -> Self {
+        self.require_parameters = Some(required);
+        self
+    }
+
+    /// Per-request Zero-Data-Retention enforcement.
+    pub fn with_zdr(mut self, zdr: bool) -> Self {
+        self.zdr = Some(zdr);
+        self
+    }
+}
+
 /// Reasoning-tokens configuration.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReasoningConfig {
