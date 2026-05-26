@@ -114,6 +114,104 @@ impl ChatCompletionRequest {
         self.transforms = Some(transforms.into_iter().map(Into::into).collect());
         self
     }
+
+    /// Replace the provider-routing config with `provider`.
+    pub fn with_provider(mut self, provider: Provider) -> Self {
+        self.provider = Some(provider);
+        self
+    }
+
+    fn provider_mut(&mut self) -> &mut Provider {
+        self.provider.get_or_insert_with(Provider::default)
+    }
+
+    /// Preferred provider order.
+    pub fn with_provider_order<S, I>(mut self, order: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.provider_mut().order = Some(order.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Sort strategy: `"throughput"`, `"price"`, or `"latency"`.
+    pub fn with_provider_sort(mut self, sort: impl Into<String>) -> Self {
+        self.provider_mut().sort = Some(sort.into());
+        self
+    }
+
+    /// Restrict to this set of providers.
+    pub fn with_only_providers<S, I>(mut self, only: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.provider_mut().only = Some(only.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Exclude these providers.
+    pub fn with_ignore_providers<S, I>(mut self, ignore: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.provider_mut().ignore = Some(ignore.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Permitted quantization tiers.
+    pub fn with_quantizations<S, I>(mut self, q: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = S>,
+    {
+        self.provider_mut().quantizations = Some(q.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Per-token max-price filter.
+    pub fn with_max_price(mut self, price: serde_json::Value) -> Self {
+        self.provider_mut().max_price = Some(price);
+        self
+    }
+
+    /// Data-collection policy: `"allow"` or `"deny"`.
+    pub fn with_data_collection(mut self, policy: impl Into<String>) -> Self {
+        self.provider_mut().data_collection = Some(policy.into());
+        self
+    }
+
+    /// Require providers to accept all sampling parameters.
+    pub fn with_require_parameters(mut self, required: bool) -> Self {
+        self.provider_mut().require_parameters = Some(required);
+        self
+    }
+
+    /// Allow / disallow OpenRouter to use other providers as fallbacks.
+    pub fn with_allow_fallbacks(mut self, allow: bool) -> Self {
+        self.provider_mut().allow_fallbacks = Some(allow);
+        self
+    }
+
+    /// Per-request Zero-Data-Retention enforcement.
+    pub fn with_zdr(mut self, zdr: bool) -> Self {
+        self.provider_mut().zdr = Some(zdr);
+        self
+    }
+
+    /// Shorthand for `with_provider_sort("throughput")` — equivalent to a
+    /// `:nitro` model suffix.
+    pub fn with_nitro(self) -> Self {
+        self.with_provider_sort("throughput")
+    }
+
+    /// Shorthand for `with_provider_sort("price")` — equivalent to a
+    /// `:floor` model suffix.
+    pub fn with_floor(self) -> Self {
+        self.with_provider_sort("price")
+    }
 }
 
 /// Legacy text-completions request payload.
@@ -164,6 +262,12 @@ impl CompletionRequest {
         I: IntoIterator<Item = S>,
     {
         self.transforms = Some(transforms.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Replace the provider-routing config.
+    pub fn with_provider(mut self, provider: Provider) -> Self {
+        self.provider = Some(provider);
         self
     }
 }
@@ -228,6 +332,25 @@ mod tests {
             .with_transforms(Vec::<String>::new());
         let v = serde_json::to_value(&req).unwrap();
         assert_eq!(v["transforms"], json!([]));
+    }
+
+    #[test]
+    fn with_provider_helpers_compose_into_one_object() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")])
+            .with_provider_order(["openai", "anthropic"])
+            .with_only_providers(["openai"])
+            .with_zdr(true)
+            .with_nitro();
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            v["provider"],
+            json!({
+                "order": ["openai", "anthropic"],
+                "only": ["openai"],
+                "zdr": true,
+                "sort": "throughput"
+            })
+        );
     }
 
     #[test]
