@@ -5,6 +5,7 @@ mod common;
 mod discovery;
 mod message;
 mod multimodal;
+mod organization;
 mod request;
 mod response;
 mod workspace;
@@ -37,6 +38,10 @@ pub use multimodal::{
     create_user_message_with_text_file, create_user_message_with_text_files,
     encode_image_bytes_to_base64, encode_image_to_base64, AudioFormat, ContentBuilder, File,
     FileParserEngine, ImageDetail,
+};
+pub use organization::{
+    ListOrganizationMembersOptions, ListOrganizationMembersResponse, OrganizationMember,
+    OrganizationMemberRole,
 };
 pub use request::{ChatCompletionRequest, CompletionRequest};
 pub use response::{

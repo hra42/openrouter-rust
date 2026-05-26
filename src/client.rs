@@ -17,7 +17,8 @@ use crate::types::{
     ChatCompletionResponse, CompletionRequest, CompletionResponse, CreateKeyRequest,
     CreateKeyResponse, CreateWorkspaceRequest, CreateWorkspaceResponse, CreditsResponse,
     DeleteKeyResponse, DeleteWorkspaceResponse, GetKeyByHashResponse, GetWorkspaceResponse,
-    KeyResponse, ListKeysOptions, ListKeysResponse, ListModelsOptions, ListWorkspacesOptions,
+    KeyResponse, ListKeysOptions, ListKeysResponse, ListModelsOptions,
+    ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
     ListWorkspacesResponse, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
     UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
 };
@@ -275,6 +276,22 @@ impl Client {
         }
         let path = format!("keys/{}", percent_encode_segment(hash));
         request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// List members of the organization associated with the authenticated
+    /// management key.
+    ///
+    /// `GET /organization/members`. **Requires a provisioning key.** Supports
+    /// `offset` / `limit` pagination via [`ListOrganizationMembersOptions`].
+    pub async fn list_organization_members(
+        &self,
+        opts: Option<&ListOrganizationMembersOptions>,
+    ) -> Result<ListOrganizationMembersResponse> {
+        let query = opts
+            .copied()
+            .map(ListOrganizationMembersOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "organization/members", &query).await
     }
 
     /// List workspaces on the organization.

@@ -43,7 +43,8 @@ pub use types::{
 };
 pub use types::{
     BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateWorkspaceRequest,
-    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse, ListWorkspacesOptions,
-    ListWorkspacesResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace,
-    WorkspaceMember, WorkspaceMemberRole,
+    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse,
+    ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
+    ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, UpdateWorkspaceRequest,
+    UpdateWorkspaceResponse, Workspace, WorkspaceMember, WorkspaceMemberRole,
 };
