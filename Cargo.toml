@@ -1,6 +1,6 @@
 [package]
 name = "openrouter"
-version = "0.1.0-alpha.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "Unlicense"
@@ -10,6 +10,15 @@ description = "Idiomatic async Rust SDK for the OpenRouter API."
 keywords = ["openrouter", "llm", "ai", "async", "sdk"]
 categories = ["api-bindings", "asynchronous"]
 readme = "README.md"
+include = [
+    "src/**/*",
+    "docs/recipes/*.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "AGENTS.md",
+    "CLAUDE.md",
+]
 
 [package.metadata.docs.rs]
 all-features = true
