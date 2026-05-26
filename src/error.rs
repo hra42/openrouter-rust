@@ -74,7 +74,6 @@ struct ApiErrorBody {
     provider_name: Option<String>,
 }
 
-#[allow(dead_code)] // Wired into the request layer in Phase 2.
 impl Error {
     /// Build an `Error::Api` from a status code, raw response body, and optional
     /// `Retry-After` hint. Tolerates non-JSON bodies and partial payloads.

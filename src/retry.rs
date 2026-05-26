@@ -44,7 +44,6 @@ impl Default for RetryConfig {
     }
 }
 
-#[allow(dead_code)] // Wired into the request layer in Phase 2.
 impl RetryConfig {
     /// Compute the (jittered) delay before the *next* retry, given the
     /// 1-indexed attempt number that just failed.
@@ -68,7 +67,6 @@ impl RetryConfig {
 /// `op` is invoked at least once. On a transient failure we sleep
 /// `delay_for_attempt(n)` (or the error's `Retry-After`, when larger)
 /// before the next try. Non-transient failures return immediately.
-#[allow(dead_code)] // Wired into the request layer in Phase 2.
 pub(crate) async fn run_with_retry<F, Fut, T>(cfg: &RetryConfig, mut op: F) -> Result<T>
 where
     F: FnMut() -> Fut,

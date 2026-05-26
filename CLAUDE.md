@@ -37,6 +37,10 @@ Crate root `src/lib.rs` is a thin re-export façade. The substrate is split into
 
 Phase 2 will add the request-execution layer; it should be the only consumer of `Error::from_response_body`, `is_transient`, `retry_after`, and `run_with_retry`. Until then those are `pub(crate)` + `#[allow(dead_code)]` — preserve that visibility.
 
+## Live API testing
+
+Any example, smoke test, or manual run that hits the real OpenRouter API must use **`google/gemini-3.1-flash-lite`** as the model. Do not switch to other models without an explicit ask — keeps cost predictable and behavior consistent across smoke tests.
+
 ## Conventions
 
 - Lints in `Cargo.toml` deny `rust_2018_idioms` and `missing_debug_implementations`, and warn on `unreachable_pub`. New public types need `Debug`; new modules should respect the `unreachable_pub` boundary (use `pub(crate)` for internals).
