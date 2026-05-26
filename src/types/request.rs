@@ -59,6 +59,29 @@ pub struct ChatCompletionRequest {
     pub user: Option<String>,
 }
 
+impl ChatCompletionRequest {
+    /// Construct a new request with just the required fields.
+    pub fn new(model: impl Into<String>, messages: Vec<Message>) -> Self {
+        Self {
+            model: model.into(),
+            messages,
+            ..Default::default()
+        }
+    }
+
+    /// Attach the list of tools the model may call.
+    pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
+        self.tools = Some(tools);
+        self
+    }
+
+    /// Set the tool-selection strategy.
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = Some(choice);
+        self
+    }
+}
+
 /// Legacy text-completions request payload.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct CompletionRequest {
@@ -87,4 +110,44 @@ pub struct CompletionRequest {
     pub transforms: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub user: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{FunctionDef, Tool, ToolChoice};
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn with_tools_serializes_only_set_fields() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")])
+            .with_tools(vec![Tool::function(FunctionDef::new(
+                "f",
+                json!({"type":"object"}),
+            ))])
+            .with_tool_choice(ToolChoice::required());
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            v,
+            json!({
+                "model": "x/y",
+                "messages": [{"role":"user","content":"hi"}],
+                "tools": [{
+                    "type": "function",
+                    "function": {"name":"f","parameters":{"type":"object"}}
+                }],
+                "tool_choice": "required"
+            })
+        );
+    }
+
+    #[test]
+    fn tool_choice_function_serializes() {
+        let v = serde_json::to_value(ToolChoice::function("get_weather")).unwrap();
+        assert_eq!(
+            v,
+            json!({"type":"function","function":{"name":"get_weather"}})
+        );
+    }
 }

@@ -49,7 +49,7 @@ async fn complete_legacy_happy_path() {
         ..Default::default()
     };
     let resp = c.complete(req).await.unwrap();
-    assert_eq!(resp.id, "cmp-1");
+    assert_eq!(resp.id.as_deref(), Some("cmp-1"));
     assert_eq!(resp.choices.len(), 1);
     assert_eq!(resp.choices[0].text, " there was a frog");
 }
