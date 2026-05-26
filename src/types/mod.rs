@@ -11,6 +11,7 @@ mod organization;
 mod request;
 mod rerank;
 mod response;
+mod video;
 mod workspace;
 
 pub use account::{
@@ -60,6 +61,11 @@ pub use rerank::{RerankDocument, RerankRequest, RerankResponse, RerankResult, Re
 pub use response::{
     ChatCompletionResponse, Choice, CompletionChoice, CompletionResponse, Delta, LogProbs,
     TokenDetails, Usage,
+};
+pub use video::{
+    VideoAspectRatio, VideoContentPartImage, VideoContentResponse, VideoFrameImage, VideoFrameType,
+    VideoGenerationRequest, VideoGenerationResponse, VideoGenerationUsage, VideoImageUrl,
+    VideoModel, VideoModelsResponse, VideoProvider, VideoResolution, VideoStatus,
 };
 pub(crate) use workspace::BulkWorkspaceMembersRequest;
 pub use workspace::{

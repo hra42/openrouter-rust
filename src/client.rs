@@ -25,6 +25,7 @@ use crate::types::{
     ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, RerankRequest,
     RerankResponse, SpeechFormat, SpeechRequest, SpeechResponse, UpdateGuardrailRequest,
     UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    VideoContentResponse, VideoGenerationRequest, VideoGenerationResponse, VideoModelsResponse,
     ZdrEndpointsResponse,
 };
 
@@ -495,6 +496,91 @@ impl Client {
             percent_encode_segment(id)
         );
         request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// Submit a new video generation job.
+    ///
+    /// `POST /videos`. Returns the initial response (job id, polling URL,
+    /// status). Poll [`Client::get_video`] until
+    /// [`VideoStatus::is_terminal`] returns true, or use
+    /// [`Client::wait_for_video`]. `model` and `prompt` are required.
+    pub async fn create_video(
+        &self,
+        req: &VideoGenerationRequest,
+    ) -> Result<VideoGenerationResponse> {
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.prompt.is_empty() {
+            return Err(Error::InvalidInput("prompt is required"));
+        }
+        request::execute_json(self, "videos", req).await
+    }
+
+    /// Fetch the current status of a video generation job.
+    ///
+    /// `GET /videos/{job_id}`.
+    pub async fn get_video(&self, job_id: &str) -> Result<VideoGenerationResponse> {
+        if job_id.is_empty() {
+            return Err(Error::InvalidInput("job_id cannot be empty"));
+        }
+        let path = format!("videos/{}", percent_encode_segment(job_id));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Download the generated video bytes for a completed job.
+    ///
+    /// `GET /videos/{job_id}/content`. Pass `index = 0` for the default
+    /// output; non-zero `index` selects an additional output when the
+    /// provider produced multiple videos. Returns the bytes plus the
+    /// upstream `Content-Type` (typically `application/octet-stream`).
+    pub async fn get_video_content(
+        &self,
+        job_id: &str,
+        index: u32,
+    ) -> Result<VideoContentResponse> {
+        if job_id.is_empty() {
+            return Err(Error::InvalidInput("job_id cannot be empty"));
+        }
+        let path = format!("videos/{}/content", percent_encode_segment(job_id));
+        let query: Vec<(&'static str, String)> = if index > 0 {
+            vec![("index", index.to_string())]
+        } else {
+            Vec::new()
+        };
+        let (content, content_type) = request::execute_bytes_get(self, &path, &query).await?;
+        Ok(VideoContentResponse {
+            content,
+            content_type,
+        })
+    }
+
+    /// List the video generation models available through OpenRouter,
+    /// including each model's supported aspect ratios, resolutions,
+    /// durations, and pricing SKUs.
+    ///
+    /// `GET /videos/models`.
+    pub async fn list_video_models(&self) -> Result<VideoModelsResponse> {
+        request::execute_json_get(self, "videos/models", &[]).await
+    }
+
+    /// Poll [`Client::get_video`] until the job reaches a terminal status.
+    ///
+    /// Sleeps `interval` between polls. Returns the final response. The
+    /// caller is responsible for any overall timeout — wrap this in a
+    /// [`tokio::time::timeout`] if you need one.
+    pub async fn wait_for_video(
+        &self,
+        job_id: &str,
+        interval: Duration,
+    ) -> Result<VideoGenerationResponse> {
+        loop {
+            let resp = self.get_video(job_id).await?;
+            if resp.status.is_terminal() {
+                return Ok(resp);
+            }
+            tokio::time::sleep(interval).await;
+        }
     }
 
     /// Synthesize speech audio from text.

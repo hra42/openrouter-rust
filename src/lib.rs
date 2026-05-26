@@ -53,5 +53,8 @@ pub use types::{
     PublicEndpoint, PublicEndpointPricing, RerankDocument, RerankRequest, RerankResponse,
     RerankResult, RerankUsage, ResetInterval, SpeechFormat, SpeechProvider, SpeechRequest,
     SpeechResponse, UpdateGuardrailRequest, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
-    Workspace, WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
+    VideoAspectRatio, VideoContentPartImage, VideoContentResponse, VideoFrameImage, VideoFrameType,
+    VideoGenerationRequest, VideoGenerationResponse, VideoGenerationUsage, VideoImageUrl,
+    VideoModel, VideoModelsResponse, VideoProvider, VideoResolution, VideoStatus, Workspace,
+    WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
 };
