@@ -389,10 +389,7 @@ fn run_multimodal(client: &Client) -> Fut {
         // 2. ContentBuilder composing text + image with explicit detail.
         let msg = ContentBuilder::new()
             .add_text("What colors dominate this image?")
-            .add_image_with_detail(
-                "https://hra42.com/test-image.png",
-                ImageDetail::Low,
-            )
+            .add_image_with_detail("https://hra42.com/test-image.png", ImageDetail::Low)
             .build_message(Role::User);
         let resp = client
             .chat_complete(ChatCompletionRequest::new(MODEL, vec![msg]))
