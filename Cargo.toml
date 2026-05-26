@@ -22,11 +22,21 @@ bytes = "1"
 rand = "0.8"
 url = "2"
 base64 = "0.22"
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 wiremock = "0.6"
 pretty_assertions = "1"
+
+[features]
+default = []
+# Enables the (beta) Responses API surface. See `crate::responses`.
+beta = []
+
+[[example]]
+name = "responses"
+required-features = ["beta"]
 
 [lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }

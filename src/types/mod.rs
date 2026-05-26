@@ -1,12 +1,18 @@
 //! Shared serde types for messages, requests, and responses.
 
 mod account;
+mod audio_speech;
 mod common;
 mod discovery;
+mod guardrails;
 mod message;
 mod multimodal;
+mod organization;
 mod request;
+mod rerank;
 mod response;
+mod video;
+mod workspace;
 
 pub use account::{
     ActivityData, ActivityOptions, ActivityResponse, ApiKey, CreateKeyRequest, CreateKeyResponse,
@@ -14,6 +20,7 @@ pub use account::{
     KeyRateLimit, KeyResponse, ListKeysOptions, ListKeysResponse, UpdateKeyRequest,
     UpdateKeyResponse,
 };
+pub use audio_speech::{SpeechFormat, SpeechProvider, SpeechRequest, SpeechResponse};
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
     JsonSchema, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolCall, ToolChoice,
@@ -24,6 +31,14 @@ pub use discovery::{
     ModelEndpointPricing, ModelEndpointsArchitecture, ModelEndpointsData, ModelEndpointsResponse,
     ModelPerRequestLimits, ModelPricing, ModelTopProvider, ModelsResponse, ProviderInfo,
     ProvidersResponse,
+};
+pub use guardrails::{
+    AssignKeysRequest, AssignKeysResponse, AssignMembersRequest, AssignMembersResponse,
+    CreateGuardrailRequest, DeleteGuardrailResponse, Guardrail, GuardrailKeyAssignment,
+    GuardrailMemberAssignment, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
+    PercentileStats, PublicEndpoint, PublicEndpointPricing, ResetInterval, UpdateGuardrailRequest,
+    ZdrEndpointsResponse,
 };
 pub use message::{Content, ContentPart, FileRef, ImageUrl, InputAudio, Message, Role};
 pub use multimodal::{
@@ -37,8 +52,25 @@ pub use multimodal::{
     encode_image_bytes_to_base64, encode_image_to_base64, AudioFormat, ContentBuilder, File,
     FileParserEngine, ImageDetail,
 };
+pub use organization::{
+    ListOrganizationMembersOptions, ListOrganizationMembersResponse, OrganizationMember,
+    OrganizationMemberRole,
+};
 pub use request::{ChatCompletionRequest, CompletionRequest};
+pub use rerank::{RerankDocument, RerankRequest, RerankResponse, RerankResult, RerankUsage};
 pub use response::{
     ChatCompletionResponse, Choice, CompletionChoice, CompletionResponse, Delta, LogProbs,
     TokenDetails, Usage,
+};
+pub use video::{
+    VideoAspectRatio, VideoContentPartImage, VideoContentResponse, VideoFrameImage, VideoFrameType,
+    VideoGenerationRequest, VideoGenerationResponse, VideoGenerationUsage, VideoImageUrl,
+    VideoModel, VideoModelsResponse, VideoProvider, VideoResolution, VideoStatus,
+};
+pub(crate) use workspace::BulkWorkspaceMembersRequest;
+pub use workspace::{
+    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateWorkspaceRequest,
+    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse, ListWorkspacesOptions,
+    ListWorkspacesResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace,
+    WorkspaceMember, WorkspaceMemberRole,
 };

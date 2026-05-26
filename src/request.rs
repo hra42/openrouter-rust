@@ -116,6 +116,137 @@ where
     execute_request(client, method, path, &[], body_bytes).await
 }
 
+/// Execute a JSON POST whose successful response is a raw binary body
+/// (e.g. TTS audio, video download). Returns the body bytes alongside the
+/// upstream `Content-Type` so callers can echo or branch on it.
+///
+/// Retries on transient failures, same as the JSON helpers.
+#[allow(dead_code)] // Consumed by the TTS / video endpoints (HRA-147 / HRA-148).
+pub(crate) async fn execute_bytes_post<Req>(
+    client: &Client,
+    path: &str,
+    body: &Req,
+) -> Result<(bytes::Bytes, Option<String>)>
+where
+    Req: Serialize + ?Sized,
+{
+    let body_bytes = serde_json::to_vec(body)?;
+    let url = endpoint_url(client, path)?;
+    let headers = base_headers(client, ACCEPT_JSON)?;
+    let cfg = client.retry().clone();
+
+    run_with_retry(&cfg, || {
+        let url = url.clone();
+        let headers = headers.clone();
+        let body_bytes = body_bytes.clone();
+        async move {
+            let resp = client
+                .http()
+                .request(Method::POST, url)
+                .headers(headers)
+                .body(body_bytes)
+                .send()
+                .await?;
+            let status = resp.status();
+            let content_type = resp
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+            if status.is_success() {
+                let bytes = resp.bytes().await?;
+                Ok((bytes, content_type))
+            } else {
+                Err(api_error_from_response(resp, status).await)
+            }
+        }
+    })
+    .await
+}
+
+/// Execute a GET request whose successful response is a raw binary body
+/// (e.g. video content download). Returns body + `Content-Type`.
+///
+/// Single attempt — large downloads should not retry on partial failures.
+#[allow(dead_code)] // Consumed by the video download endpoint (HRA-148).
+pub(crate) async fn execute_bytes_get(
+    client: &Client,
+    path: &str,
+    query: &[(&str, String)],
+) -> Result<(bytes::Bytes, Option<String>)> {
+    let mut url = endpoint_url(client, path)?;
+    if !query.is_empty() {
+        let mut q = url.query_pairs_mut();
+        for (k, v) in query {
+            q.append_pair(k, v);
+        }
+        drop(q);
+    }
+    let headers = base_headers(client, ACCEPT_JSON)?;
+
+    let resp = client
+        .http()
+        .request(Method::GET, url)
+        .headers(headers)
+        .send()
+        .await?;
+    let status = resp.status();
+    let content_type = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+    if status.is_success() {
+        let bytes = resp.bytes().await?;
+        Ok((bytes, content_type))
+    } else {
+        Err(api_error_from_response(resp, status).await)
+    }
+}
+
+/// Execute a JSON request that returns no decoded body (success = 2xx with
+/// empty or ignored body). Used by endpoints like guardrail unassign that
+/// return 204 / `{}`.
+#[allow(dead_code)] // Consumed by the guardrails endpoints (HRA-145).
+pub(crate) async fn execute_no_content_method<Req>(
+    client: &Client,
+    method: Method,
+    path: &str,
+    body: Option<&Req>,
+) -> Result<()>
+where
+    Req: Serialize + ?Sized,
+{
+    let body_bytes = match body {
+        Some(b) => Some(serde_json::to_vec(b)?),
+        None => None,
+    };
+    let url = endpoint_url(client, path)?;
+    let headers = base_headers(client, ACCEPT_JSON)?;
+    let cfg = client.retry().clone();
+
+    run_with_retry(&cfg, || {
+        let url = url.clone();
+        let headers = headers.clone();
+        let body_bytes = body_bytes.clone();
+        let method = method.clone();
+        async move {
+            let mut req = client.http().request(method, url).headers(headers);
+            if let Some(b) = body_bytes {
+                req = req.body(b);
+            }
+            let resp = req.send().await?;
+            let status = resp.status();
+            if status.is_success() {
+                Ok(())
+            } else {
+                Err(api_error_from_response(resp, status).await)
+            }
+        }
+    })
+    .await
+}
+
 /// Shared inner loop for all JSON unary methods. Runs through [`run_with_retry`].
 async fn execute_request<Resp>(
     client: &Client,

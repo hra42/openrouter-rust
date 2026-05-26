@@ -9,11 +9,15 @@
 pub mod client;
 pub mod error;
 pub mod mcp;
+pub mod oauth;
 mod request;
+#[cfg(feature = "beta")]
+pub mod responses;
 pub mod retry;
 pub mod stream;
 pub mod tool_call_accumulator;
 pub mod types;
+pub mod webhooks;
 
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, Result};
@@ -40,4 +44,21 @@ pub use types::{
     ModelPerRequestLimits, ModelPricing, ModelTopProvider, ModelsResponse, Plugin, Provider,
     ProviderInfo, ProvidersResponse, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall,
     ToolChoice, UpdateKeyRequest, UpdateKeyResponse, UrlCitation, Usage, WebPluginConfig,
+};
+pub use types::{
+    AssignKeysRequest, AssignKeysResponse, AssignMembersRequest, AssignMembersResponse,
+    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateGuardrailRequest,
+    CreateWorkspaceRequest, CreateWorkspaceResponse, DeleteGuardrailResponse,
+    DeleteWorkspaceResponse, GetWorkspaceResponse, Guardrail, GuardrailKeyAssignment,
+    GuardrailMemberAssignment, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
+    ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
+    ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, PercentileStats,
+    PublicEndpoint, PublicEndpointPricing, RerankDocument, RerankRequest, RerankResponse,
+    RerankResult, RerankUsage, ResetInterval, SpeechFormat, SpeechProvider, SpeechRequest,
+    SpeechResponse, UpdateGuardrailRequest, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    VideoAspectRatio, VideoContentPartImage, VideoContentResponse, VideoFrameImage, VideoFrameType,
+    VideoGenerationRequest, VideoGenerationResponse, VideoGenerationUsage, VideoImageUrl,
+    VideoModel, VideoModelsResponse, VideoProvider, VideoResolution, VideoStatus, Workspace,
+    WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
 };

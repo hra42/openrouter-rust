@@ -12,11 +12,21 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ActivityOptions, ActivityResponse, ChatCompletionRequest, ChatCompletionResponse,
-    CompletionRequest, CompletionResponse, CreateKeyRequest, CreateKeyResponse, CreditsResponse,
-    DeleteKeyResponse, GetKeyByHashResponse, KeyResponse, ListKeysOptions, ListKeysResponse,
-    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
-    UpdateKeyRequest, UpdateKeyResponse,
+    ActivityOptions, ActivityResponse, AssignKeysRequest, AssignKeysResponse, AssignMembersRequest,
+    AssignMembersResponse, BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse,
+    BulkWorkspaceMembersRequest, ChatCompletionRequest, ChatCompletionResponse, CompletionRequest,
+    CompletionResponse, CreateGuardrailRequest, CreateKeyRequest, CreateKeyResponse,
+    CreateWorkspaceRequest, CreateWorkspaceResponse, CreditsResponse, DeleteGuardrailResponse,
+    DeleteKeyResponse, DeleteWorkspaceResponse, GetKeyByHashResponse, GetWorkspaceResponse,
+    Guardrail, KeyResponse, ListGuardrailKeyAssignmentsResponse,
+    ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
+    ListKeysOptions, ListKeysResponse, ListModelsOptions, ListOrganizationMembersOptions,
+    ListOrganizationMembersResponse, ListWorkspacesOptions, ListWorkspacesResponse,
+    ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, RerankRequest,
+    RerankResponse, SpeechFormat, SpeechRequest, SpeechResponse, UpdateGuardrailRequest,
+    UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    VideoContentResponse, VideoGenerationRequest, VideoGenerationResponse, VideoModelsResponse,
+    ZdrEndpointsResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -274,9 +284,496 @@ impl Client {
         request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
     }
 
+    /// List guardrails for the organization.
+    ///
+    /// `GET /guardrails`. **Requires a provisioning key.**
+    pub async fn list_guardrails(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails", &query).await
+    }
+
+    /// Create a new guardrail. `name` is required.
+    ///
+    /// `POST /guardrails`. **Requires a provisioning key.**
+    pub async fn create_guardrail(&self, req: &CreateGuardrailRequest) -> Result<Guardrail> {
+        if req.name.is_empty() {
+            return Err(Error::InvalidInput("name is required"));
+        }
+        request::execute_json(self, "guardrails", req).await
+    }
+
+    /// Fetch a single guardrail by ID.
+    ///
+    /// `GET /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn get_guardrail(&self, id: &str) -> Result<Guardrail> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Update an existing guardrail. Pass only the fields you want to change
+    /// on [`UpdateGuardrailRequest`].
+    ///
+    /// `PATCH /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn update_guardrail(
+        &self,
+        id: &str,
+        req: &UpdateGuardrailRequest,
+    ) -> Result<Guardrail> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_method(self, reqwest::Method::PATCH, &path, Some(req)).await
+    }
+
+    /// Delete a guardrail by ID. **Irreversible.**
+    ///
+    /// `DELETE /guardrails/{id}`. **Requires a provisioning key.**
+    pub async fn delete_guardrail(&self, id: &str) -> Result<DeleteGuardrailResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}", percent_encode_segment(id));
+        request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// List key assignments across all guardrails.
+    ///
+    /// `GET /guardrails/key-assignments`. **Requires a provisioning key.**
+    pub async fn list_all_guardrail_key_assignments(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailKeyAssignmentsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails/key-assignments", &query).await
+    }
+
+    /// List key assignments for a specific guardrail.
+    ///
+    /// `GET /guardrails/{id}/key-assignments`. **Requires a provisioning key.**
+    pub async fn list_guardrail_key_assignments(
+        &self,
+        id: &str,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailKeyAssignmentsResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, &path, &query).await
+    }
+
+    /// Assign API keys (by hash) to a guardrail.
+    ///
+    /// `POST /guardrails/{id}/key-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn assign_keys_to_guardrail(
+        &self,
+        id: &str,
+        req: &AssignKeysRequest,
+    ) -> Result<AssignKeysResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.key_hashes.is_empty() {
+            return Err(Error::InvalidInput("key_hashes cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        request::execute_json(self, &path, req).await
+    }
+
+    /// Remove key assignments from a guardrail.
+    ///
+    /// `DELETE /guardrails/{id}/key-assignments` (with body). **Requires a
+    /// provisioning key.**
+    pub async fn unassign_keys_from_guardrail(
+        &self,
+        id: &str,
+        req: &AssignKeysRequest,
+    ) -> Result<()> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.key_hashes.is_empty() {
+            return Err(Error::InvalidInput("key_hashes cannot be empty"));
+        }
+        let path = format!("guardrails/{}/key-assignments", percent_encode_segment(id));
+        request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// List member assignments across all guardrails.
+    ///
+    /// `GET /guardrails/member-assignments`. **Requires a provisioning key.**
+    pub async fn list_all_guardrail_member_assignments(
+        &self,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailMemberAssignmentsResponse> {
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "guardrails/member-assignments", &query).await
+    }
+
+    /// List member assignments for a specific guardrail.
+    ///
+    /// `GET /guardrails/{id}/member-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn list_guardrail_member_assignments(
+        &self,
+        id: &str,
+        opts: Option<&ListGuardrailsOptions>,
+    ) -> Result<ListGuardrailMemberAssignmentsResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        let query = opts
+            .copied()
+            .map(ListGuardrailsOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, &path, &query).await
+    }
+
+    /// Assign organization members (by user id) to a guardrail.
+    ///
+    /// `POST /guardrails/{id}/member-assignments`. **Requires a provisioning
+    /// key.**
+    pub async fn assign_members_to_guardrail(
+        &self,
+        id: &str,
+        req: &AssignMembersRequest,
+    ) -> Result<AssignMembersResponse> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.member_user_ids.is_empty() {
+            return Err(Error::InvalidInput("member_user_ids cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        request::execute_json(self, &path, req).await
+    }
+
+    /// Remove member assignments from a guardrail.
+    ///
+    /// `DELETE /guardrails/{id}/member-assignments` (with body). **Requires a
+    /// provisioning key.**
+    pub async fn unassign_members_from_guardrail(
+        &self,
+        id: &str,
+        req: &AssignMembersRequest,
+    ) -> Result<()> {
+        if id.is_empty() {
+            return Err(Error::InvalidInput("id cannot be empty"));
+        }
+        if req.member_user_ids.is_empty() {
+            return Err(Error::InvalidInput("member_user_ids cannot be empty"));
+        }
+        let path = format!(
+            "guardrails/{}/member-assignments",
+            percent_encode_segment(id)
+        );
+        request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// Submit a new video generation job.
+    ///
+    /// `POST /videos`. Returns the initial response (job id, polling URL,
+    /// status). Poll [`Client::get_video`] until
+    /// [`VideoStatus::is_terminal`] returns true, or use
+    /// [`Client::wait_for_video`]. `model` and `prompt` are required.
+    pub async fn create_video(
+        &self,
+        req: &VideoGenerationRequest,
+    ) -> Result<VideoGenerationResponse> {
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.prompt.is_empty() {
+            return Err(Error::InvalidInput("prompt is required"));
+        }
+        request::execute_json(self, "videos", req).await
+    }
+
+    /// Fetch the current status of a video generation job.
+    ///
+    /// `GET /videos/{job_id}`.
+    pub async fn get_video(&self, job_id: &str) -> Result<VideoGenerationResponse> {
+        if job_id.is_empty() {
+            return Err(Error::InvalidInput("job_id cannot be empty"));
+        }
+        let path = format!("videos/{}", percent_encode_segment(job_id));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Download the generated video bytes for a completed job.
+    ///
+    /// `GET /videos/{job_id}/content`. Pass `index = 0` for the default
+    /// output; non-zero `index` selects an additional output when the
+    /// provider produced multiple videos. Returns the bytes plus the
+    /// upstream `Content-Type` (typically `application/octet-stream`).
+    pub async fn get_video_content(
+        &self,
+        job_id: &str,
+        index: u32,
+    ) -> Result<VideoContentResponse> {
+        if job_id.is_empty() {
+            return Err(Error::InvalidInput("job_id cannot be empty"));
+        }
+        let path = format!("videos/{}/content", percent_encode_segment(job_id));
+        let query: Vec<(&'static str, String)> = if index > 0 {
+            vec![("index", index.to_string())]
+        } else {
+            Vec::new()
+        };
+        let (content, content_type) = request::execute_bytes_get(self, &path, &query).await?;
+        Ok(VideoContentResponse {
+            content,
+            content_type,
+        })
+    }
+
+    /// List the video generation models available through OpenRouter,
+    /// including each model's supported aspect ratios, resolutions,
+    /// durations, and pricing SKUs.
+    ///
+    /// `GET /videos/models`.
+    pub async fn list_video_models(&self) -> Result<VideoModelsResponse> {
+        request::execute_json_get(self, "videos/models", &[]).await
+    }
+
+    /// Poll [`Client::get_video`] until the job reaches a terminal status.
+    ///
+    /// Sleeps `interval` between polls. Returns the final response. The
+    /// caller is responsible for any overall timeout — wrap this in a
+    /// [`tokio::time::timeout`] if you need one.
+    pub async fn wait_for_video(
+        &self,
+        job_id: &str,
+        interval: Duration,
+    ) -> Result<VideoGenerationResponse> {
+        loop {
+            let resp = self.get_video(job_id).await?;
+            if resp.status.is_terminal() {
+                return Ok(resp);
+            }
+            tokio::time::sleep(interval).await;
+        }
+    }
+
+    /// Synthesize speech audio from text.
+    ///
+    /// `POST /audio/speech`. Returns the raw audio bytes alongside the
+    /// upstream `Content-Type` and the resolved format. `input`, `model`,
+    /// and `voice` must be non-empty. The format defaults to PCM upstream
+    /// when [`SpeechRequest::response_format`] is unset.
+    pub async fn create_speech(&self, req: &SpeechRequest) -> Result<SpeechResponse> {
+        if req.input.is_empty() {
+            return Err(Error::InvalidInput("input is required"));
+        }
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.voice.is_empty() {
+            return Err(Error::InvalidInput("voice is required"));
+        }
+        let (audio, content_type) = request::execute_bytes_post(self, "audio/speech", req).await?;
+        let format = req.response_format.unwrap_or(SpeechFormat::Pcm);
+        Ok(SpeechResponse {
+            audio,
+            content_type,
+            format,
+        })
+    }
+
+    /// Rerank documents against a query using a reranking model
+    /// (e.g. `cohere/rerank-v3.5`).
+    ///
+    /// `POST /rerank`. Returns results sorted by descending relevance score.
+    /// `model`, `query`, and at least one document are required.
+    pub async fn rerank(&self, req: &RerankRequest) -> Result<RerankResponse> {
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.query.is_empty() {
+            return Err(Error::InvalidInput("query is required"));
+        }
+        if req.documents.is_empty() {
+            return Err(Error::InvalidInput("documents must not be empty"));
+        }
+        request::execute_json(self, "rerank", req).await
+    }
+
+    /// List endpoints compatible with Zero Data Retention.
+    ///
+    /// `GET /endpoints/zdr`. Returns the endpoints that honor ZDR across all
+    /// providers — useful as a preview before enforcing ZDR on a guardrail or
+    /// key. No authentication tier requirement beyond a normal API key.
+    pub async fn list_zdr_endpoints(&self) -> Result<ZdrEndpointsResponse> {
+        request::execute_json_get(self, "endpoints/zdr", &[]).await
+    }
+
+    /// List members of the organization associated with the authenticated
+    /// management key.
+    ///
+    /// `GET /organization/members`. **Requires a provisioning key.** Supports
+    /// `offset` / `limit` pagination via [`ListOrganizationMembersOptions`].
+    pub async fn list_organization_members(
+        &self,
+        opts: Option<&ListOrganizationMembersOptions>,
+    ) -> Result<ListOrganizationMembersResponse> {
+        let query = opts
+            .copied()
+            .map(ListOrganizationMembersOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "organization/members", &query).await
+    }
+
+    /// List workspaces on the organization.
+    ///
+    /// `GET /workspaces`. **Requires a provisioning (management) API key.**
+    /// Supports `offset` / `limit` pagination via [`ListWorkspacesOptions`].
+    pub async fn list_workspaces(
+        &self,
+        opts: Option<&ListWorkspacesOptions>,
+    ) -> Result<ListWorkspacesResponse> {
+        let query = opts
+            .copied()
+            .map(ListWorkspacesOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "workspaces", &query).await
+    }
+
+    /// Create a new workspace.
+    ///
+    /// `POST /workspaces`. **Requires a provisioning key.** `name` and `slug`
+    /// must be non-empty.
+    pub async fn create_workspace(
+        &self,
+        req: &CreateWorkspaceRequest,
+    ) -> Result<CreateWorkspaceResponse> {
+        if req.name.is_empty() {
+            return Err(Error::InvalidInput("name is required"));
+        }
+        if req.slug.is_empty() {
+            return Err(Error::InvalidInput("slug is required"));
+        }
+        request::execute_json(self, "workspaces", req).await
+    }
+
+    /// Fetch a single workspace by UUID or slug.
+    ///
+    /// `GET /workspaces/{id_or_slug}`. **Requires a provisioning key.**
+    pub async fn get_workspace(&self, id_or_slug: &str) -> Result<GetWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Update an existing workspace by UUID or slug. Pass only the fields you
+    /// want to change on [`UpdateWorkspaceRequest`].
+    ///
+    /// `PATCH /workspaces/{id_or_slug}`. **Requires a provisioning key.**
+    pub async fn update_workspace(
+        &self,
+        id_or_slug: &str,
+        req: &UpdateWorkspaceRequest,
+    ) -> Result<UpdateWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_method(self, reqwest::Method::PATCH, &path, Some(req)).await
+    }
+
+    /// Delete a workspace by UUID or slug.
+    ///
+    /// `DELETE /workspaces/{id_or_slug}`. **Requires a provisioning key.** The
+    /// default workspace cannot be deleted, and any workspace with active API
+    /// keys returns an error.
+    pub async fn delete_workspace(&self, id_or_slug: &str) -> Result<DeleteWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// Bulk-add organization members to a workspace. Members are assigned the
+    /// same role they hold in the organization.
+    ///
+    /// `POST /workspaces/{id_or_slug}/members/add`. **Requires a provisioning
+    /// key.**
+    pub async fn add_workspace_members(
+        &self,
+        id_or_slug: &str,
+        user_ids: &[String],
+    ) -> Result<BulkAddWorkspaceMembersResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        if user_ids.is_empty() {
+            return Err(Error::InvalidInput("user_ids cannot be empty"));
+        }
+        let path = format!(
+            "workspaces/{}/members/add",
+            percent_encode_segment(id_or_slug)
+        );
+        let body = BulkWorkspaceMembersRequest { user_ids };
+        request::execute_json(self, &path, &body).await
+    }
+
+    /// Bulk-remove members from a workspace. Members with active API keys in
+    /// the workspace cannot be removed.
+    ///
+    /// `POST /workspaces/{id_or_slug}/members/remove`. **Requires a
+    /// provisioning key.**
+    pub async fn remove_workspace_members(
+        &self,
+        id_or_slug: &str,
+        user_ids: &[String],
+    ) -> Result<BulkRemoveWorkspaceMembersResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        if user_ids.is_empty() {
+            return Err(Error::InvalidInput("user_ids cannot be empty"));
+        }
+        let path = format!(
+            "workspaces/{}/members/remove",
+            percent_encode_segment(id_or_slug)
+        );
+        let body = BulkWorkspaceMembersRequest { user_ids };
+        request::execute_json(self, &path, &body).await
+    }
+
     /// Internal: serialize the request once, open the first stream, and build
     /// a reconnect closure that re-issues the same body on transient failure.
-    async fn open_event_stream<Req, Resp>(
+    pub(crate) async fn open_event_stream<Req, Resp>(
         &self,
         path: &'static str,
         req: &Req,
