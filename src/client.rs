@@ -22,9 +22,9 @@ use crate::types::{
     ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
     ListKeysOptions, ListKeysResponse, ListModelsOptions, ListOrganizationMembersOptions,
     ListOrganizationMembersResponse, ListWorkspacesOptions, ListWorkspacesResponse,
-    ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, UpdateGuardrailRequest,
-    UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
-    ZdrEndpointsResponse,
+    ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, RerankRequest,
+    RerankResponse, UpdateGuardrailRequest, UpdateKeyRequest, UpdateKeyResponse,
+    UpdateWorkspaceRequest, UpdateWorkspaceResponse, ZdrEndpointsResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -494,6 +494,24 @@ impl Client {
             percent_encode_segment(id)
         );
         request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// Rerank documents against a query using a reranking model
+    /// (e.g. `cohere/rerank-v3.5`).
+    ///
+    /// `POST /rerank`. Returns results sorted by descending relevance score.
+    /// `model`, `query`, and at least one document are required.
+    pub async fn rerank(&self, req: &RerankRequest) -> Result<RerankResponse> {
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.query.is_empty() {
+            return Err(Error::InvalidInput("query is required"));
+        }
+        if req.documents.is_empty() {
+            return Err(Error::InvalidInput("documents must not be empty"));
+        }
+        request::execute_json(self, "rerank", req).await
     }
 
     /// List endpoints compatible with Zero Data Retention.

@@ -8,6 +8,7 @@ mod message;
 mod multimodal;
 mod organization;
 mod request;
+mod rerank;
 mod response;
 mod workspace;
 
@@ -53,6 +54,7 @@ pub use organization::{
     OrganizationMemberRole,
 };
 pub use request::{ChatCompletionRequest, CompletionRequest};
+pub use rerank::{RerankDocument, RerankRequest, RerankResponse, RerankResult, RerankUsage};
 pub use response::{
     ChatCompletionResponse, Choice, CompletionChoice, CompletionResponse, Delta, LogProbs,
     TokenDetails, Usage,

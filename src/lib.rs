@@ -50,7 +50,7 @@ pub use types::{
     ListGuardrailMemberAssignmentsResponse, ListGuardrailsOptions, ListGuardrailsResponse,
     ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
     ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, PercentileStats,
-    PublicEndpoint, PublicEndpointPricing, ResetInterval, UpdateGuardrailRequest,
-    UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace, WorkspaceMember,
-    WorkspaceMemberRole, ZdrEndpointsResponse,
+    PublicEndpoint, PublicEndpointPricing, RerankDocument, RerankRequest, RerankResponse,
+    RerankResult, RerankUsage, ResetInterval, UpdateGuardrailRequest, UpdateWorkspaceRequest,
+    UpdateWorkspaceResponse, Workspace, WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
 };
