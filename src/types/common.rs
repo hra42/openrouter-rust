@@ -284,14 +284,17 @@ pub struct ReasoningConfig {
     pub exclude: Option<bool>,
 }
 
-/// A request-time plugin. Currently only the `web` search plugin is modeled
-/// in typed form; new plugin variants can be added without breaking existing
-/// callers.
+/// A request-time plugin. Variants serialize with a tagged `id` field
+/// (`web`, `file-parser`); new variants can be added without breaking
+/// existing callers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "id", rename_all = "kebab-case")]
 pub enum Plugin {
     /// Real-time web search plugin.
     Web(WebPluginConfig),
+    /// PDF / file-parser plugin.
+    #[serde(rename = "file-parser")]
+    File(FilePluginConfig),
 }
 
 impl Plugin {
@@ -304,6 +307,29 @@ impl Plugin {
     pub fn web_with(config: WebPluginConfig) -> Self {
         Plugin::Web(config)
     }
+
+    /// File-parser plugin with the given PDF parsing engine. Pass `None` to
+    /// let OpenRouter pick a default.
+    pub fn file_parser(pdf_engine: Option<&str>) -> Self {
+        let pdf = pdf_engine.map(|e| FilePdfConfig {
+            engine: Some(e.to_string()),
+        });
+        Plugin::File(FilePluginConfig { pdf })
+    }
+}
+
+/// Configuration for the `file-parser` plugin.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct FilePluginConfig {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub pdf: Option<FilePdfConfig>,
+}
+
+/// PDF-specific options for the `file-parser` plugin.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct FilePdfConfig {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub engine: Option<String>,
 }
 
 /// Configuration for the `web` plugin.
@@ -335,12 +361,22 @@ impl WebPluginConfig {
     }
 }
 
-/// A typed annotation attached to an assistant message. OpenRouter currently
-/// emits these for the web-search plugin (`url_citation` variant).
+/// A typed annotation attached to an assistant message. OpenRouter emits
+/// `url_citation` for the web-search plugin and `file` for the file-parser
+/// plugin (so previously-parsed PDFs can be replayed without re-parsing).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Annotation {
     UrlCitation { url_citation: UrlCitation },
+    File { file: FileAnnotation },
+}
+
+/// Parsed-file annotation: feed it back into a follow-up request to reuse
+/// the prior parse result instead of re-running the file-parser.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FileAnnotation {
+    pub filename: String,
+    pub file_data: String,
 }
 
 /// A URL citation produced by the web-search plugin.

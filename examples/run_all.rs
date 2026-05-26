@@ -14,8 +14,9 @@ use std::fmt::Write as _;
 
 use futures::StreamExt;
 use openrouter::{
-    mcp, Annotation, ChatCompletionRequest, Client, CompletionRequest, FunctionDef, Message, Tool,
-    ToolCallAccumulator, ToolChoice,
+    create_file_parser_plugin, create_user_message_with_image, mcp, Annotation,
+    ChatCompletionRequest, Client, CompletionRequest, ContentBuilder, FileParserEngine,
+    FunctionDef, ImageDetail, Message, Role, Tool, ToolCallAccumulator, ToolChoice,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -39,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("reasoning", run_reasoning),
         ("web_search", run_web_search),
         ("mcp_tools", run_mcp_tools),
+        ("multimodal", run_multimodal),
     ];
 
     let mut summary = Vec::new();
@@ -299,6 +301,9 @@ fn run_web_search(client: &Client) -> Fut {
                             url_citation.url
                         );
                     }
+                    Annotation::File { file } => {
+                        println!("  file annotation: {}", file.filename);
+                    }
                 }
             }
         }
@@ -356,6 +361,71 @@ fn run_mcp_tools(client: &Client) -> Fut {
                 call.function.name.as_deref().unwrap_or(""),
                 call.function.arguments.as_deref().unwrap_or("")
             );
+        }
+        Ok(())
+    })
+}
+
+fn run_multimodal(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        // 1. Image-URL roundtrip via the convenience constructor.
+        let req = ChatCompletionRequest::new(
+            MODEL,
+            vec![create_user_message_with_image(
+                "Describe this image in one sentence.",
+                "https://hra42.com/test-image.png",
+            )],
+        );
+        let resp = client.chat_complete(req).await?;
+        let answer = resp
+            .choices
+            .first()
+            .and_then(|c| c.message.as_ref())
+            .and_then(|m| m.content_text())
+            .unwrap_or("");
+        println!("  image answer: {answer}");
+
+        // 2. ContentBuilder composing text + image with explicit detail.
+        let msg = ContentBuilder::new()
+            .add_text("What colors dominate this image?")
+            .add_image_with_detail("https://hra42.com/test-image.png", ImageDetail::Low)
+            .build_message(Role::User);
+        let resp = client
+            .chat_complete(ChatCompletionRequest::new(MODEL, vec![msg]))
+            .await?;
+        println!(
+            "  builder answer: {}",
+            resp.choices
+                .first()
+                .and_then(|c| c.message.as_ref())
+                .and_then(|m| m.content_text())
+                .unwrap_or("")
+        );
+
+        // 3. PDF parsing roundtrip with the file-parser plugin.
+        let pdf_req = ChatCompletionRequest::new(
+            MODEL,
+            vec![openrouter::create_user_message_with_pdf(
+                "Summarize this PDF in one sentence.",
+                "https://bitcoin.org/bitcoin.pdf",
+                "bitcoin.pdf",
+            )],
+        )
+        .with_plugins(vec![create_file_parser_plugin(FileParserEngine::Native)]);
+        let pdf_resp = client.chat_complete(pdf_req).await?;
+        let pdf_msg = pdf_resp
+            .choices
+            .first()
+            .and_then(|c| c.message.as_ref())
+            .ok_or("no pdf message")?;
+        println!("  pdf answer: {}", pdf_msg.content_text().unwrap_or(""));
+        if let Some(anns) = &pdf_msg.annotations {
+            for a in anns {
+                if let Annotation::File { file } = a {
+                    println!("  pdf annotation reusable for: {}", file.filename);
+                }
+            }
         }
         Ok(())
     })

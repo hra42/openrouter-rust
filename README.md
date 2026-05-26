@@ -93,7 +93,7 @@ Work is broken into 7 phases:
 1. **Foundation** ✅ — crate scaffolding, client builder, error model, retry/backoff, core types
 2. **Core Endpoints & Streaming** ✅ — chat, legacy completions, SSE infrastructure
 3. **Advanced Inference** ✅ — tool calling, structured outputs, MCP, transforms, web search, provider routing, reasoning
-4. **Multimodal Inputs** — images, PDFs, audio, text files, content builder
+4. **Multimodal Inputs** ✅ — images, PDFs (with parsing engines + annotation reuse), audio, text files, `ContentBuilder` for mixed content
 5. **Discovery & Account** — models, endpoints, providers, credits, activity, API key CRUD
 6. **Org & Beta Surfaces** — workspaces, members, guardrails, rerank, TTS, video, webhooks, OAuth PKCE, Responses API
 7. **Testing, Docs & Release** — unit + E2E test coverage, docs site, crates.io publish
