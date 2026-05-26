@@ -12,7 +12,11 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse, Provider,
+    ActivityOptions, ActivityResponse, ChatCompletionRequest, ChatCompletionResponse,
+    CompletionRequest, CompletionResponse, CreateKeyRequest, CreateKeyResponse, CreditsResponse,
+    DeleteKeyResponse, GetKeyByHashResponse, KeyResponse, ListKeysOptions, ListKeysResponse,
+    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
+    UpdateKeyRequest, UpdateKeyResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -127,6 +131,147 @@ impl Client {
         req.stream = Some(true);
         apply_model_suffix(&mut req.model, &mut req.provider);
         self.open_event_stream("completions", &req).await
+    }
+
+    /// List available models on OpenRouter.
+    ///
+    /// `GET /models`. Supports an optional category filter
+    /// ([`ListModelsOptions::category`]) and supported-parameter filter.
+    /// The `supported_parameters` field of each [`crate::Model`] is the union
+    /// of parameters across all providers — a single provider may not offer
+    /// every listed parameter.
+    pub async fn list_models(&self, opts: Option<&ListModelsOptions>) -> Result<ModelsResponse> {
+        let query = opts.map(ListModelsOptions::to_query).unwrap_or_default();
+        request::execute_json_get(self, "models", &query).await
+    }
+
+    /// List per-provider endpoints for a single model.
+    ///
+    /// `GET /models/{author}/{slug}/endpoints`. The response includes pricing,
+    /// status, context length, uptime, quantization, and supported parameters
+    /// for every provider serving the model — useful for routing or price
+    /// comparison.
+    pub async fn list_model_endpoints(
+        &self,
+        author: &str,
+        slug: &str,
+    ) -> Result<ModelEndpointsResponse> {
+        if author.is_empty() {
+            return Err(Error::InvalidInput("author cannot be empty"));
+        }
+        if slug.is_empty() {
+            return Err(Error::InvalidInput("slug cannot be empty"));
+        }
+        let path = format!(
+            "models/{}/{}/endpoints",
+            percent_encode_segment(author),
+            percent_encode_segment(slug),
+        );
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// List all providers available through OpenRouter.
+    ///
+    /// `GET /providers`. Returns the provider name, slug, and policy /
+    /// status-page URLs (when published).
+    pub async fn list_providers(&self) -> Result<ProvidersResponse> {
+        request::execute_json_get(self, "providers", &[]).await
+    }
+
+    /// Retrieve the authenticated user's purchased credits and total usage.
+    ///
+    /// `GET /credits`. Use [`crate::CreditsData::remaining`] for the available
+    /// balance.
+    pub async fn get_credits(&self) -> Result<CreditsResponse> {
+        request::execute_json_get(self, "credits", &[]).await
+    }
+
+    /// Retrieve metadata about the currently authenticated API key.
+    ///
+    /// `GET /key`. Returns label, configured spend limit, current usage,
+    /// remaining balance, free-tier flag, provisioning-key flag, and any
+    /// configured rate limit.
+    pub async fn get_key(&self) -> Result<KeyResponse> {
+        request::execute_json_get(self, "key", &[]).await
+    }
+
+    /// Daily activity grouped by model endpoint for the last 30 completed UTC days.
+    ///
+    /// `GET /activity`. **Requires a provisioning key** — using a regular
+    /// inference key returns 401. If [`ActivityOptions::date`] is set
+    /// (`YYYY-MM-DD`), results are filtered to that single UTC day.
+    ///
+    /// When ingesting on a schedule, wait ~30 minutes past the UTC boundary
+    /// before requesting the previous day: events are aggregated by request
+    /// start time, and some reasoning models take a few minutes to complete.
+    pub async fn get_activity(&self, opts: Option<&ActivityOptions>) -> Result<ActivityResponse> {
+        let query = opts.map(ActivityOptions::to_query).unwrap_or_default();
+        request::execute_json_get(self, "activity", &query).await
+    }
+
+    /// List all API keys on the account.
+    ///
+    /// `GET /keys`. **Requires a provisioning key.** Supports `offset` and
+    /// `include_disabled` filters via [`ListKeysOptions`].
+    pub async fn list_keys(&self, opts: Option<&ListKeysOptions>) -> Result<ListKeysResponse> {
+        let query = opts
+            .copied()
+            .map(ListKeysOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "keys", &query).await
+    }
+
+    /// Look up a single API key by its `hash` (returned from
+    /// [`Client::list_keys`] or [`Client::create_key`]).
+    ///
+    /// `GET /keys/{hash}`. **Requires a provisioning key.**
+    pub async fn get_key_by_hash(&self, hash: &str) -> Result<GetKeyByHashResponse> {
+        if hash.is_empty() {
+            return Err(Error::InvalidInput("hash cannot be empty"));
+        }
+        let path = format!("keys/{}", percent_encode_segment(hash));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Create a new API key.
+    ///
+    /// `POST /keys`. **Requires a provisioning key.** The plaintext key is
+    /// returned **only once** in [`CreateKeyResponse::key`] — store it
+    /// immediately, it cannot be recovered later.
+    pub async fn create_key(&self, req: &CreateKeyRequest) -> Result<CreateKeyResponse> {
+        if req.name.is_empty() {
+            return Err(Error::InvalidInput("name is required"));
+        }
+        request::execute_json(self, "keys", req).await
+    }
+
+    /// Update an existing API key by hash. Pass only the fields you want to
+    /// change on [`UpdateKeyRequest`].
+    ///
+    /// `PATCH /keys/{hash}`. **Requires a provisioning key.**
+    pub async fn update_key(
+        &self,
+        hash: &str,
+        req: &UpdateKeyRequest,
+    ) -> Result<UpdateKeyResponse> {
+        if hash.is_empty() {
+            return Err(Error::InvalidInput("hash cannot be empty"));
+        }
+        let path = format!("keys/{}", percent_encode_segment(hash));
+        request::execute_json_method(self, reqwest::Method::PATCH, &path, Some(req)).await
+    }
+
+    /// Delete an API key by hash.
+    ///
+    /// `DELETE /keys/{hash}`. **Requires a provisioning key.** This operation
+    /// is irreversible — the deleted key cannot be restored, and any clients
+    /// still using it will immediately start receiving 401s.
+    pub async fn delete_key(&self, hash: &str) -> Result<DeleteKeyResponse> {
+        if hash.is_empty() {
+            return Err(Error::InvalidInput("hash cannot be empty"));
+        }
+        let path = format!("keys/{}", percent_encode_segment(hash));
+        request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build
@@ -257,6 +402,25 @@ impl ClientBuilder {
             }),
         })
     }
+}
+
+/// Percent-encode a single URL path segment.
+///
+/// Encodes everything outside the unreserved set (RFC 3986 §2.3) plus `/`,
+/// which is enough for OpenRouter identifiers (author slug, model slug, key
+/// hash). Avoids pulling in `percent-encoding` for a few-byte helper.
+pub(crate) fn percent_encode_segment(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for &b in s.as_bytes() {
+        let unreserved = b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~');
+        if unreserved {
+            out.push(b as char);
+        } else {
+            out.push('%');
+            out.push_str(&format!("{b:02X}"));
+        }
+    }
+    out
 }
 
 /// Strip a `:nitro` or `:floor` suffix from `model` and project it onto

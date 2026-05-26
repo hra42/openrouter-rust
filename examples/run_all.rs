@@ -1,4 +1,4 @@
-//! Exercise every Phase 3 feature against the live API in a single binary.
+//! Exercise every shipped feature against the live API in a single binary.
 //!
 //! Mirrors the Go SDK's aggregate example. Each section is independent — if
 //! one fails the next still runs, and a final summary lists pass/fail per
@@ -16,7 +16,8 @@ use futures::StreamExt;
 use openrouter::{
     create_file_parser_plugin, create_user_message_with_image, mcp, Annotation,
     ChatCompletionRequest, Client, CompletionRequest, ContentBuilder, FileParserEngine,
-    FunctionDef, ImageDetail, Message, Role, Tool, ToolCallAccumulator, ToolChoice,
+    FunctionDef, ImageDetail, ListModelsOptions, Message, Role, Tool, ToolCallAccumulator,
+    ToolChoice,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -41,6 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("web_search", run_web_search),
         ("mcp_tools", run_mcp_tools),
         ("multimodal", run_multimodal),
+        ("discovery", run_discovery),
+        ("account", run_account),
     ];
 
     let mut summary = Vec::new();
@@ -362,6 +365,49 @@ fn run_mcp_tools(client: &Client) -> Fut {
                 call.function.arguments.as_deref().unwrap_or("")
             );
         }
+        Ok(())
+    })
+}
+
+fn run_discovery(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        let models = client
+            .list_models(Some(&ListModelsOptions::new().category("programming")))
+            .await?;
+        println!("  programming models: {}", models.data.len());
+
+        let providers = client.list_providers().await?;
+        println!("  total providers:    {}", providers.data.len());
+
+        let eps = client
+            .list_model_endpoints("google", "gemini-3.1-flash-lite")
+            .await?;
+        println!(
+            "  {} endpoints for {}",
+            eps.data.endpoints.len(),
+            eps.data.id
+        );
+        Ok(())
+    })
+}
+
+fn run_account(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        let credits = client.get_credits().await?;
+        println!(
+            "  credits: ${:.4} purchased, ${:.4} used, ${:.4} remaining",
+            credits.data.total_credits,
+            credits.data.total_usage,
+            credits.data.remaining()
+        );
+
+        let key = client.get_key().await?;
+        println!(
+            "  key:     {} (free_tier={}, provisioning={})",
+            key.data.label, key.data.is_free_tier, key.data.is_provisioning_key
+        );
         Ok(())
     })
 }

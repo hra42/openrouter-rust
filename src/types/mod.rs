@@ -1,15 +1,29 @@
 //! Shared serde types for messages, requests, and responses.
 
+mod account;
 mod common;
+mod discovery;
 mod message;
 mod multimodal;
 mod request;
 mod response;
 
+pub use account::{
+    ActivityData, ActivityOptions, ActivityResponse, ApiKey, CreateKeyRequest, CreateKeyResponse,
+    CreditsData, CreditsResponse, DeleteKeyData, DeleteKeyResponse, GetKeyByHashResponse, KeyData,
+    KeyRateLimit, KeyResponse, ListKeysOptions, ListKeysResponse, UpdateKeyRequest,
+    UpdateKeyResponse,
+};
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
     JsonSchema, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolCall, ToolChoice,
     UrlCitation, WebPluginConfig,
+};
+pub use discovery::{
+    ListModelsOptions, Model, ModelArchitecture, ModelDefaultParameters, ModelEndpoint,
+    ModelEndpointPricing, ModelEndpointsArchitecture, ModelEndpointsData, ModelEndpointsResponse,
+    ModelPerRequestLimits, ModelPricing, ModelTopProvider, ModelsResponse, ProviderInfo,
+    ProvidersResponse,
 };
 pub use message::{Content, ContentPart, FileRef, ImageUrl, InputAudio, Message, Role};
 pub use multimodal::{
