@@ -284,6 +284,79 @@ pub struct ReasoningConfig {
     pub exclude: Option<bool>,
 }
 
+/// A request-time plugin. Currently only the `web` search plugin is modeled
+/// in typed form; new plugin variants can be added without breaking existing
+/// callers.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "id", rename_all = "kebab-case")]
+pub enum Plugin {
+    /// Real-time web search plugin.
+    Web(WebPluginConfig),
+}
+
+impl Plugin {
+    /// Default web-search plugin (server-side defaults for engine and prompt).
+    pub fn web() -> Self {
+        Plugin::Web(WebPluginConfig::default())
+    }
+
+    /// Web-search plugin with explicit overrides.
+    pub fn web_with(config: WebPluginConfig) -> Self {
+        Plugin::Web(config)
+    }
+}
+
+/// Configuration for the `web` plugin.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct WebPluginConfig {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub max_results: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub search_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub engine: Option<String>,
+}
+
+impl WebPluginConfig {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn with_max_results(mut self, n: u32) -> Self {
+        self.max_results = Some(n);
+        self
+    }
+    pub fn with_search_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.search_prompt = Some(prompt.into());
+        self
+    }
+    pub fn with_engine(mut self, engine: impl Into<String>) -> Self {
+        self.engine = Some(engine.into());
+        self
+    }
+}
+
+/// A typed annotation attached to an assistant message. OpenRouter currently
+/// emits these for the web-search plugin (`url_citation` variant).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Annotation {
+    UrlCitation { url_citation: UrlCitation },
+}
+
+/// A URL citation produced by the web-search plugin.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UrlCitation {
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub start_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub end_index: Option<u32>,
+}
+
 impl ReasoningConfig {
     /// New, empty reasoning config.
     pub fn new() -> Self {

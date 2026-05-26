@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Message, Provider, ReasoningConfig, ResponseFormat, Tool, ToolChoice};
+use super::{Message, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolChoice};
 
 /// Chat-completions request payload.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -53,6 +53,8 @@ pub struct ChatCompletionRequest {
     pub reasoning: Option<ReasoningConfig>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub transforms: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub plugins: Option<Vec<Plugin>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub usage: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -240,6 +242,22 @@ impl ChatCompletionRequest {
         self.reasoning_mut().exclude = Some(exclude);
         self
     }
+
+    /// Replace the plugin list.
+    pub fn with_plugins(mut self, plugins: Vec<Plugin>) -> Self {
+        self.plugins = Some(plugins);
+        self
+    }
+
+    /// Enable the default web-search plugin. Equivalent to
+    /// `with_plugins(vec![Plugin::web()])`, but preserves any plugins
+    /// already configured (web is pushed onto the existing list).
+    pub fn with_web_search(mut self) -> Self {
+        self.plugins
+            .get_or_insert_with(Vec::new)
+            .push(Plugin::web());
+        self
+    }
 }
 
 /// Legacy text-completions request payload.
@@ -268,6 +286,8 @@ pub struct CompletionRequest {
     pub provider: Option<Provider>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub transforms: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub plugins: Option<Vec<Plugin>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub user: Option<String>,
 }
@@ -378,6 +398,36 @@ mod tests {
                 "zdr": true,
                 "sort": "throughput"
             })
+        );
+    }
+
+    #[test]
+    fn with_web_search_serializes_default_plugin() {
+        let req = ChatCompletionRequest::new("x/y", vec![Message::user("hi")]).with_web_search();
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["plugins"], json!([{"id":"web"}]));
+    }
+
+    #[test]
+    fn with_plugins_custom_config_serializes() {
+        use crate::types::{Plugin, WebPluginConfig};
+        let plugin = Plugin::web_with(
+            WebPluginConfig::new()
+                .with_max_results(3)
+                .with_search_prompt("Cite sources.")
+                .with_engine("native"),
+        );
+        let req =
+            ChatCompletionRequest::new("x/y", vec![Message::user("hi")]).with_plugins(vec![plugin]);
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            v["plugins"],
+            json!([{
+                "id":"web",
+                "max_results":3,
+                "search_prompt":"Cite sources.",
+                "engine":"native"
+            }])
         );
     }
 

@@ -20,7 +20,8 @@ pub use retry::RetryConfig;
 pub use stream::EventStream;
 pub use tool_call_accumulator::ToolCallAccumulator;
 pub use types::{
-    ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest, CompletionResponse,
-    Content, ContentPart, Delta, FunctionCall, FunctionDef, Message, Provider, ReasoningConfig,
-    ResponseFormat, Role, Tool, ToolCall, ToolChoice, Usage,
+    Annotation, ChatCompletionRequest, ChatCompletionResponse, Choice, CompletionRequest,
+    CompletionResponse, Content, ContentPart, Delta, FunctionCall, FunctionDef, Message, Plugin,
+    Provider, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall, ToolChoice, UrlCitation,
+    Usage, WebPluginConfig,
 };

@@ -6,8 +6,8 @@ mod request;
 mod response;
 
 pub use common::{
-    FunctionCall, FunctionDef, JsonSchema, Provider, ReasoningConfig, ResponseFormat, Tool,
-    ToolCall, ToolChoice,
+    Annotation, FunctionCall, FunctionDef, JsonSchema, Plugin, Provider, ReasoningConfig,
+    ResponseFormat, Tool, ToolCall, ToolChoice, UrlCitation, WebPluginConfig,
 };
 pub use message::{Content, ContentPart, FileRef, ImageUrl, InputAudio, Message, Role};
 pub use request::{ChatCompletionRequest, CompletionRequest};

@@ -159,6 +159,40 @@ mod tests {
     }
 
     #[test]
+    fn annotations_round_trip_url_citations() {
+        let raw = r#"{
+            "id":"gen-a","model":"x/y",
+            "choices":[{
+                "index":0,
+                "message":{
+                    "role":"assistant",
+                    "content":"see source",
+                    "annotations":[{
+                        "type":"url_citation",
+                        "url_citation":{
+                            "url":"https://example.com",
+                            "title":"Example",
+                            "start_index":0,
+                            "end_index":10
+                        }
+                    }]
+                },
+                "finish_reason":"stop"
+            }]
+        }"#;
+        let r: ChatCompletionResponse = serde_json::from_str(raw).unwrap();
+        let msg = r.choices[0].message.as_ref().unwrap();
+        let anns = msg.annotations.as_ref().unwrap();
+        assert_eq!(anns.len(), 1);
+        match &anns[0] {
+            crate::types::Annotation::UrlCitation { url_citation } => {
+                assert_eq!(url_citation.url, "https://example.com");
+                assert_eq!(url_citation.title.as_deref(), Some("Example"));
+            }
+        }
+    }
+
+    #[test]
     fn reasoning_fields_round_trip() {
         let raw = r#"{
             "id":"gen-r","model":"x/y",
