@@ -23,8 +23,9 @@ use crate::types::{
     ListKeysOptions, ListKeysResponse, ListModelsOptions, ListOrganizationMembersOptions,
     ListOrganizationMembersResponse, ListWorkspacesOptions, ListWorkspacesResponse,
     ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse, RerankRequest,
-    RerankResponse, UpdateGuardrailRequest, UpdateKeyRequest, UpdateKeyResponse,
-    UpdateWorkspaceRequest, UpdateWorkspaceResponse, ZdrEndpointsResponse,
+    RerankResponse, SpeechFormat, SpeechRequest, SpeechResponse, UpdateGuardrailRequest,
+    UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    ZdrEndpointsResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -494,6 +495,31 @@ impl Client {
             percent_encode_segment(id)
         );
         request::execute_no_content_method(self, reqwest::Method::DELETE, &path, Some(req)).await
+    }
+
+    /// Synthesize speech audio from text.
+    ///
+    /// `POST /audio/speech`. Returns the raw audio bytes alongside the
+    /// upstream `Content-Type` and the resolved format. `input`, `model`,
+    /// and `voice` must be non-empty. The format defaults to PCM upstream
+    /// when [`SpeechRequest::response_format`] is unset.
+    pub async fn create_speech(&self, req: &SpeechRequest) -> Result<SpeechResponse> {
+        if req.input.is_empty() {
+            return Err(Error::InvalidInput("input is required"));
+        }
+        if req.model.is_empty() {
+            return Err(Error::InvalidInput("model is required"));
+        }
+        if req.voice.is_empty() {
+            return Err(Error::InvalidInput("voice is required"));
+        }
+        let (audio, content_type) = request::execute_bytes_post(self, "audio/speech", req).await?;
+        let format = req.response_format.unwrap_or(SpeechFormat::Pcm);
+        Ok(SpeechResponse {
+            audio,
+            content_type,
+            format,
+        })
     }
 
     /// Rerank documents against a query using a reranking model

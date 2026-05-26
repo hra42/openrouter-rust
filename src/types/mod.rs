@@ -1,6 +1,7 @@
 //! Shared serde types for messages, requests, and responses.
 
 mod account;
+mod audio_speech;
 mod common;
 mod discovery;
 mod guardrails;
@@ -18,6 +19,7 @@ pub use account::{
     KeyRateLimit, KeyResponse, ListKeysOptions, ListKeysResponse, UpdateKeyRequest,
     UpdateKeyResponse,
 };
+pub use audio_speech::{SpeechFormat, SpeechProvider, SpeechRequest, SpeechResponse};
 pub use common::{
     Annotation, FileAnnotation, FilePdfConfig, FilePluginConfig, FunctionCall, FunctionDef,
     JsonSchema, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, ToolCall, ToolChoice,

@@ -51,6 +51,7 @@ pub use types::{
     ListOrganizationMembersOptions, ListOrganizationMembersResponse, ListWorkspacesOptions,
     ListWorkspacesResponse, OrganizationMember, OrganizationMemberRole, PercentileStats,
     PublicEndpoint, PublicEndpointPricing, RerankDocument, RerankRequest, RerankResponse,
-    RerankResult, RerankUsage, ResetInterval, UpdateGuardrailRequest, UpdateWorkspaceRequest,
-    UpdateWorkspaceResponse, Workspace, WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
+    RerankResult, RerankUsage, ResetInterval, SpeechFormat, SpeechProvider, SpeechRequest,
+    SpeechResponse, UpdateGuardrailRequest, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
+    Workspace, WorkspaceMember, WorkspaceMemberRole, ZdrEndpointsResponse,
 };
