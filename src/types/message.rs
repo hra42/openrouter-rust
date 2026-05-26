@@ -25,6 +25,10 @@ pub struct Message {
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tool_call_id: Option<String>,
+    /// Reasoning trace returned by the model (non-streaming responses).
+    /// Streaming reasoning chunks come through [`crate::types::Delta::reasoning`].
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reasoning: Option<String>,
 }
 
 /// Message content: either a plain string or an array of typed parts.
@@ -113,6 +117,7 @@ impl Message {
             name: None,
             tool_calls: None,
             tool_call_id: Some(tool_call_id.into()),
+            reasoning: None,
         }
     }
 
@@ -123,6 +128,7 @@ impl Message {
             name: None,
             tool_calls: None,
             tool_call_id: None,
+            reasoning: None,
         }
     }
 

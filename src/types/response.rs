@@ -159,6 +159,33 @@ mod tests {
     }
 
     #[test]
+    fn reasoning_fields_round_trip() {
+        let raw = r#"{
+            "id":"gen-r","model":"x/y",
+            "choices":[{
+                "index":0,
+                "message":{"role":"assistant","content":"42","reasoning":"long chain"},
+                "finish_reason":"stop"
+            }],
+            "usage":{
+                "prompt_tokens":3,"completion_tokens":5,"total_tokens":8,
+                "completion_tokens_details":{"reasoning_tokens":17}
+            }
+        }"#;
+        let r: ChatCompletionResponse = serde_json::from_str(raw).unwrap();
+        let msg = r.choices[0].message.as_ref().unwrap();
+        assert_eq!(msg.reasoning.as_deref(), Some("long chain"));
+        let details = r
+            .usage
+            .as_ref()
+            .unwrap()
+            .completion_tokens_details
+            .as_ref()
+            .unwrap();
+        assert_eq!(details.reasoning_tokens, Some(17));
+    }
+
+    #[test]
     fn round_trip_tool_call_response() {
         let raw = r#"{
             "id":"gen-3","model":"x/y",
