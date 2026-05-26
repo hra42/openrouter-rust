@@ -13,7 +13,7 @@ use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest, CompletionResponse,
-    ListModelsOptions, ModelsResponse, Provider,
+    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -140,6 +140,31 @@ impl Client {
     pub async fn list_models(&self, opts: Option<&ListModelsOptions>) -> Result<ModelsResponse> {
         let query = opts.map(ListModelsOptions::to_query).unwrap_or_default();
         request::execute_json_get(self, "models", &query).await
+    }
+
+    /// List per-provider endpoints for a single model.
+    ///
+    /// `GET /models/{author}/{slug}/endpoints`. The response includes pricing,
+    /// status, context length, uptime, quantization, and supported parameters
+    /// for every provider serving the model — useful for routing or price
+    /// comparison.
+    pub async fn list_model_endpoints(
+        &self,
+        author: &str,
+        slug: &str,
+    ) -> Result<ModelEndpointsResponse> {
+        if author.is_empty() {
+            return Err(Error::InvalidInput("author cannot be empty"));
+        }
+        if slug.is_empty() {
+            return Err(Error::InvalidInput("slug cannot be empty"));
+        }
+        let path = format!(
+            "models/{}/{}/endpoints",
+            percent_encode_segment(author),
+            percent_encode_segment(slug),
+        );
+        request::execute_json_get(self, &path, &[]).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build
@@ -270,6 +295,25 @@ impl ClientBuilder {
             }),
         })
     }
+}
+
+/// Percent-encode a single URL path segment.
+///
+/// Encodes everything outside the unreserved set (RFC 3986 §2.3) plus `/`,
+/// which is enough for OpenRouter identifiers (author slug, model slug, key
+/// hash). Avoids pulling in `percent-encoding` for a few-byte helper.
+pub(crate) fn percent_encode_segment(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for &b in s.as_bytes() {
+        let unreserved = b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~');
+        if unreserved {
+            out.push(b as char);
+        } else {
+            out.push('%');
+            out.push_str(&format!("{b:02X}"));
+        }
+    }
+    out
 }
 
 /// Strip a `:nitro` or `:floor` suffix from `model` and project it onto
