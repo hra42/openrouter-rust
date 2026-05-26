@@ -1,6 +1,6 @@
 [package]
 name = "openrouter"
-version = "0.1.0-alpha.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "Unlicense"
@@ -10,6 +10,19 @@ description = "Idiomatic async Rust SDK for the OpenRouter API."
 keywords = ["openrouter", "llm", "ai", "async", "sdk"]
 categories = ["api-bindings", "asynchronous"]
 readme = "README.md"
+include = [
+    "src/**/*",
+    "docs/recipes/*.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "AGENTS.md",
+    "CLAUDE.md",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
@@ -28,6 +41,7 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["full", "test-util"] }
 wiremock = "0.6"
 pretty_assertions = "1"
+clap = { version = "4", features = ["derive"] }
 
 [features]
 default = []
@@ -37,6 +51,9 @@ beta = []
 [[example]]
 name = "responses"
 required-features = ["beta"]
+
+[[example]]
+name = "e2e"
 
 [lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }

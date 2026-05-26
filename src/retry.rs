@@ -25,10 +25,16 @@ pub const DEFAULT_INITIAL_DELAY: Duration = Duration::from_secs(1);
 /// Retry / backoff configuration.
 #[derive(Clone, Debug)]
 pub struct RetryConfig {
+    /// Maximum number of retries after the initial attempt.
     pub max_retries: u32,
+    /// Delay before the first retry. Subsequent delays grow by
+    /// [`Self::multiplier`] up to [`Self::max_delay`].
     pub initial_delay: Duration,
+    /// Upper bound for any single sleep between attempts.
     pub max_delay: Duration,
+    /// Exponential growth multiplier between attempts (Go SDK uses 2.0).
     pub multiplier: f64,
+    /// Jitter as a fraction of the computed delay (±this proportion).
     pub jitter_factor: f64,
 }
 

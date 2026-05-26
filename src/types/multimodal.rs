@@ -21,8 +21,11 @@ use crate::error::{Error, Result};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageDetail {
+    /// Lower-resolution analysis (cheaper).
     Low,
+    /// Higher-resolution analysis (more expensive).
     High,
+    /// Let the model decide.
     Auto,
 }
 
@@ -186,7 +189,10 @@ impl FileParserEngine {
 /// `file_data`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct File {
+    /// Display filename. Sent verbatim in the wire payload.
     pub filename: String,
+    /// File payload — either a public URL (see [`Self::from_url`]) or a
+    /// data URI when sending the bytes directly.
     pub file_data: String,
 }
 
@@ -272,7 +278,9 @@ pub fn create_file_parser_plugin(engine: FileParserEngine) -> Plugin {
 /// Inline audio format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AudioFormat {
+    /// WAV (PCM) audio.
     Wav,
+    /// MP3 audio.
     Mp3,
 }
 

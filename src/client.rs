@@ -502,7 +502,7 @@ impl Client {
     ///
     /// `POST /videos`. Returns the initial response (job id, polling URL,
     /// status). Poll [`Client::get_video`] until
-    /// [`VideoStatus::is_terminal`] returns true, or use
+    /// [`crate::VideoStatus::is_terminal`] returns true, or use
     /// [`Client::wait_for_video`]. `model` and `prompt` are required.
     pub async fn create_video(
         &self,

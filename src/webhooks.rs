@@ -30,6 +30,7 @@ use crate::error::{Error, Result};
 /// Top-level OTLP JSON trace payload sent by Broadcast.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpExportTraceRequest {
+    /// Resource-grouped span batches.
     #[serde(rename = "resourceSpans", default)]
     pub resource_spans: Vec<OtlpResourceSpan>,
 }
@@ -37,8 +38,10 @@ pub struct OtlpExportTraceRequest {
 /// Spans grouped by their originating resource.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpResourceSpan {
+    /// The resource describing the trace origin.
     #[serde(default)]
     pub resource: OtlpResource,
+    /// Spans grouped by instrumentation scope.
     #[serde(rename = "scopeSpans", default)]
     pub scope_spans: Vec<OtlpScopeSpan>,
 }
@@ -46,6 +49,7 @@ pub struct OtlpResourceSpan {
 /// The entity producing telemetry.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpResource {
+    /// Resource-level attributes.
     #[serde(default)]
     pub attributes: Vec<OtlpAttribute>,
 }
@@ -53,8 +57,10 @@ pub struct OtlpResource {
 /// Spans grouped by instrumentation scope.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpScopeSpan {
+    /// Identifies the instrumentation library, when set.
     #[serde(default)]
     pub scope: Option<OtlpScope>,
+    /// Spans in this scope.
     #[serde(default)]
     pub spans: Vec<OtlpSpan>,
 }
@@ -62,8 +68,10 @@ pub struct OtlpScopeSpan {
 /// Identifies the instrumentation library.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpScope {
+    /// Library name.
     #[serde(default)]
     pub name: String,
+    /// Library version.
     #[serde(default)]
     pub version: String,
 }
@@ -71,24 +79,34 @@ pub struct OtlpScope {
 /// A single span within a trace.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpSpan {
+    /// Hex trace identifier.
     #[serde(rename = "traceId", default)]
     pub trace_id: String,
+    /// Hex span identifier.
     #[serde(rename = "spanId", default)]
     pub span_id: String,
+    /// Parent span identifier (empty for the root).
     #[serde(rename = "parentSpanId", default)]
     pub parent_span_id: String,
+    /// Span name.
     #[serde(default)]
     pub name: String,
+    /// OTLP span kind code (1 = internal, 2 = server, ...).
     #[serde(default)]
     pub kind: i32,
+    /// Start time as nanoseconds since the Unix epoch (string).
     #[serde(rename = "startTimeUnixNano", default)]
     pub start_time_unix_nano: String,
+    /// End time as nanoseconds since the Unix epoch (string).
     #[serde(rename = "endTimeUnixNano", default)]
     pub end_time_unix_nano: String,
+    /// Attributes attached to the span.
     #[serde(default)]
     pub attributes: Vec<OtlpAttribute>,
+    /// Span status.
     #[serde(default)]
     pub status: Option<OtlpStatus>,
+    /// Span events.
     #[serde(default)]
     pub events: Vec<OtlpEvent>,
 }
@@ -96,23 +114,27 @@ pub struct OtlpSpan {
 /// Key-value pair attached to a span or resource.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpAttribute {
+    /// Attribute name.
     #[serde(default)]
     pub key: String,
+    /// Attribute value.
     #[serde(default)]
     pub value: OtlpAnyValue,
 }
 
 /// A polymorphic OTLP value. The OTLP spec encodes int64 values as strings,
-/// but some emitters send them as JSON numbers — [`flex_int`] tolerates
-/// both.
+/// but some emitters send them as JSON numbers — the SDK tolerates both
+/// via the internal `deserialize_flex_int_opt` helper.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpAnyValue {
+    /// String-typed value.
     #[serde(
         rename = "stringValue",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub string_value: Option<String>,
+    /// Int64-typed value, encoded as a string per OTLP spec.
     #[serde(
         rename = "intValue",
         default,
@@ -120,14 +142,17 @@ pub struct OtlpAnyValue {
         deserialize_with = "deserialize_flex_int_opt"
     )]
     pub int_value: Option<String>,
+    /// Double-typed value.
     #[serde(
         rename = "doubleValue",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub double_value: Option<f64>,
+    /// Boolean-typed value.
     #[serde(rename = "boolValue", default, skip_serializing_if = "Option::is_none")]
     pub bool_value: Option<bool>,
+    /// Array-typed value.
     #[serde(
         rename = "arrayValue",
         default,
@@ -176,6 +201,7 @@ impl OtlpAnyValue {
 /// Wraps a slice of OTLP values.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpArrayValue {
+    /// Element values.
     #[serde(default)]
     pub values: Vec<OtlpAnyValue>,
 }
@@ -183,8 +209,10 @@ pub struct OtlpArrayValue {
 /// The status of a span.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpStatus {
+    /// OTLP status code (0 = unset, 1 = ok, 2 = error).
     #[serde(default)]
     pub code: i32,
+    /// Human-readable error message.
     #[serde(default)]
     pub message: String,
 }
@@ -192,10 +220,13 @@ pub struct OtlpStatus {
 /// A timed event within a span.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OtlpEvent {
+    /// Event name.
     #[serde(default)]
     pub name: String,
+    /// Event time as nanoseconds since the Unix epoch (string).
     #[serde(rename = "timeUnixNano", default)]
     pub time_unix_nano: String,
+    /// Event-specific attributes.
     #[serde(default)]
     pub attributes: Vec<OtlpAttribute>,
 }
@@ -206,9 +237,13 @@ pub struct OtlpEvent {
 /// callers porting from the Go SDK don't have to rename everything.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BroadcastTrace {
+    /// Hex trace identifier.
     pub trace_id: String,
+    /// Hex span identifier.
     pub span_id: String,
+    /// Parent span identifier (empty for the root).
     pub parent_span_id: String,
+    /// Span name.
     pub span_name: String,
 
     /// Start time as nanoseconds since the Unix epoch (0 when missing).
@@ -218,66 +253,100 @@ pub struct BroadcastTrace {
     /// `end - start` when both timestamps are present.
     pub duration: Duration,
 
-    // Deprecated aliases (still populated for backward compatibility).
+    /// Deprecated: prompt tokens (use [`Self::input_tokens`]).
     pub prompt_tokens: i64,
+    /// Deprecated: completion tokens (use [`Self::output_tokens`]).
     pub completion_tokens: i64,
+    /// Total tokens (computed as input + output when absent upstream).
     pub total_tokens: i64,
+    /// Total cost in USD (alias of [`Self::total_cost`]).
     pub cost: f64,
+    /// Resolved model id (prefers `response.model` over `request.model`).
     pub model: String,
 
-    // New canonical token usage fields.
+    /// Canonical input-token count.
     pub input_tokens: i64,
+    /// Canonical output-token count.
     pub output_tokens: i64,
 
-    // Cost breakdown.
+    /// Total USD cost.
     pub total_cost: f64,
+    /// Input-side USD cost.
     pub input_cost: f64,
+    /// Output-side USD cost.
     pub output_cost: f64,
 
-    // Token detail.
+    /// Tokens served from cache.
     pub cached_tokens: i64,
+    /// Audio-input tokens.
     pub audio_input_tokens: i64,
+    /// Video-input tokens.
     pub video_input_tokens: i64,
+    /// Image-output tokens.
     pub image_output_tokens: i64,
+    /// Reasoning tokens.
     pub reasoning_tokens: i64,
 
-    // GenAI semantic-convention fields.
+    /// `gen_ai.operation.name` value.
     pub operation_name: String,
+    /// `gen_ai.system` value.
     pub system: String,
+    /// `gen_ai.provider.name` value.
     pub provider_name: String,
+    /// `gen_ai.response.model` value.
     pub response_model: String,
+    /// `gen_ai.response.finish_reason` value.
     pub finish_reason: String,
+    /// `gen_ai.response.finish_reasons` value.
     pub finish_reasons: String,
+    /// `gen_ai.request.model` value.
     pub request_model: String,
 
-    // OpenRouter-specific fields.
+    /// `openrouter.provider_slug` value.
     pub provider_slug: String,
+    /// `openrouter.provider_name` value.
     pub openrouter_provider_name: String,
+    /// `openrouter.api_key_name` value.
     pub api_key_name: String,
+    /// `openrouter.entity_id` value.
     pub entity_id: String,
+    /// `openrouter.user_id` value.
     pub openrouter_user_id: String,
+    /// `openrouter.finish_reason` value.
     pub openrouter_finish_reason: String,
+    /// Per-input-token USD unit price.
     pub input_unit_price: f64,
+    /// Per-output-token USD unit price.
     pub output_unit_price: f64,
+    /// `openrouter.source` value (originating client/integration).
     pub source: String,
 
-    // Content fields.
+    /// Verbatim `gen_ai.prompt` payload.
     pub prompt: String,
+    /// Verbatim `gen_ai.completion` payload.
     pub completion: String,
 
-    // Span-level fields.
+    /// `span.type` value.
     pub span_type: String,
+    /// `span.level` value.
     pub span_level: String,
+    /// `span.input` value.
     pub span_input: String,
+    /// `span.output` value.
     pub span_output: String,
 
-    // Trace-level fields.
+    /// `trace.name` value.
     pub trace_name: String,
+    /// `trace.input` value.
     pub trace_input: String,
+    /// `trace.output` value.
     pub trace_output: String,
+    /// `trace.tags` value.
     pub trace_tags: String,
 
+    /// `user.id` value.
     pub user_id: String,
+    /// `session.id` value.
     pub session_id: String,
 
     /// Values from `trace.metadata.*` attributes (prefix stripped).

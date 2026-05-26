@@ -50,6 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("account", run_account),
         ("rerank", run_rerank),
         ("zdr_endpoints", run_zdr_endpoints),
+        ("videos", run_videos),
         ("webhook_parser", run_webhook_parser),
         ("oauth_pkce_helpers", run_oauth_pkce_helpers),
     ];
@@ -455,6 +456,21 @@ fn run_zdr_endpoints(client: &Client) -> Fut {
         println!("  ZDR-compatible endpoints: {}", zdr.data.len());
         for ep in zdr.data.iter().take(3) {
             println!("    {:<32}  {}", ep.model_id, ep.provider_name);
+        }
+        Ok(())
+    })
+}
+
+fn run_videos(client: &Client) -> Fut {
+    let client = client.clone();
+    Box::pin(async move {
+        // Cheap: just list models. The actual `create_video` example is
+        // gated on OPENROUTER_RUN_VIDEO=1 because video jobs consume real
+        // credits and minutes.
+        let resp = client.list_video_models().await?;
+        println!("  video models available: {}", resp.data.len());
+        for m in resp.data.iter().take(3) {
+            println!("    {}", m.id);
         }
         Ok(())
     })

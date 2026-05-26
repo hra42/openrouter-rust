@@ -7,56 +7,83 @@ use super::{Message, Plugin, Provider, ReasoningConfig, ResponseFormat, Tool, To
 /// Chat-completions request payload.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ChatCompletionRequest {
+    /// Model id (e.g. `google/gemini-3.1-flash-lite`).
     pub model: String,
+    /// Conversation messages.
     pub messages: Vec<Message>,
 
+    /// Sampling temperature (0.0 = deterministic, ~1.0 = creative).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub temperature: Option<f64>,
+    /// Nucleus sampling probability.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_p: Option<f64>,
+    /// Cap on tokens considered each step.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_k: Option<u32>,
+    /// Max generated tokens.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_tokens: Option<u32>,
+    /// Stream-mode flag. The SDK forces `Some(true)` for streaming
+    /// methods and `Some(false)` for blocking methods.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stream: Option<bool>,
+    /// Stop sequence(s) — string or array of strings.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stop: Option<serde_json::Value>,
+    /// Sampling seed for reproducibility.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub seed: Option<i64>,
+    /// Frequency penalty.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub frequency_penalty: Option<f64>,
+    /// Presence penalty.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub presence_penalty: Option<f64>,
+    /// Repetition penalty.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub repetition_penalty: Option<f64>,
+    /// Per-token bias map (provider-specific shape).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub logit_bias: Option<serde_json::Value>,
+    /// Request log-probabilities for the chosen tokens.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub logprobs: Option<bool>,
+    /// Number of alternate tokens to report logprobs for.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_logprobs: Option<u32>,
+    /// Min-p sampling threshold.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub min_p: Option<f64>,
+    /// Top-a sampling threshold.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_a: Option<f64>,
 
+    /// Tools the model may call.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tools: Option<Vec<Tool>>,
+    /// Tool-selection strategy.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tool_choice: Option<ToolChoice>,
+    /// Output format constraint (JSON schema / JSON mode).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub response_format: Option<ResponseFormat>,
+    /// Provider-routing parameters.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub provider: Option<Provider>,
+    /// Reasoning-token configuration.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reasoning: Option<ReasoningConfig>,
+    /// Message-transform pipeline (e.g. `["middle-out"]`).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub transforms: Option<Vec<String>>,
+    /// Plugin configuration (web search, file parsing, ...).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub plugins: Option<Vec<Plugin>>,
+    /// Provider-specific usage reporting hint.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub usage: Option<serde_json::Value>,
+    /// Opaque end-user identifier for abuse monitoring.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub user: Option<String>,
 }
@@ -263,31 +290,45 @@ impl ChatCompletionRequest {
 /// Legacy text-completions request payload.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct CompletionRequest {
+    /// Model id.
     pub model: String,
+    /// Prompt to complete.
     pub prompt: String,
 
+    /// Sampling temperature.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub temperature: Option<f64>,
+    /// Nucleus sampling probability.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_p: Option<f64>,
+    /// Max generated tokens.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_tokens: Option<u32>,
+    /// Stream-mode flag.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stream: Option<bool>,
+    /// Stop sequence(s).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stop: Option<serde_json::Value>,
+    /// Sampling seed for reproducibility.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub seed: Option<i64>,
+    /// Frequency penalty.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub frequency_penalty: Option<f64>,
+    /// Presence penalty.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub presence_penalty: Option<f64>,
+    /// Provider-routing parameters.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub provider: Option<Provider>,
+    /// Message-transform pipeline.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub transforms: Option<Vec<String>>,
+    /// Plugin configuration.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub plugins: Option<Vec<Plugin>>,
+    /// Opaque end-user identifier for abuse monitoring.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub user: Option<String>,
 }

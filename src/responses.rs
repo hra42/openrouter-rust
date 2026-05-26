@@ -1,4 +1,4 @@
-//! **[BETA]** OpenRouter Responses API.
+//! **\[BETA\]** OpenRouter Responses API.
 //!
 //! Gated behind the `beta` cargo feature; enable with
 //! `cargo build --features beta`.
@@ -21,9 +21,13 @@ use crate::types::Plugin;
 
 /// Reasoning effort levels accepted by the API.
 pub mod reasoning_effort {
+    /// Minimal reasoning effort.
     pub const MINIMAL: &str = "minimal";
+    /// Low reasoning effort.
     pub const LOW: &str = "low";
+    /// Medium reasoning effort.
     pub const MEDIUM: &str = "medium";
+    /// High reasoning effort.
     pub const HIGH: &str = "high";
 }
 
@@ -39,12 +43,15 @@ pub struct ResponsesReasoning {
 /// only `input_text` is supported.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesInputContent {
+    /// Always `"input_text"`.
     #[serde(rename = "type")]
     pub kind: String,
+    /// Text body.
     pub text: String,
 }
 
 impl ResponsesInputContent {
+    /// Build an `input_text` content part.
     pub fn input_text(text: impl Into<String>) -> Self {
         Self {
             kind: "input_text".into(),
@@ -60,13 +67,16 @@ pub struct ResponsesInputItem {
     /// `"message"` or `"function_call_output"`.
     #[serde(rename = "type")]
     pub kind: String,
+    /// Item identifier (server-assigned for replays).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub id: Option<String>,
+    /// Item status, when carried.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub status: Option<String>,
     /// `"user"`, `"assistant"`, or `"system"` (only for `message` items).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub role: Option<String>,
+    /// Content parts (only for `message` items).
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub content: Vec<ResponsesInputContent>,
     /// Only for `function_call_output` items.
@@ -88,14 +98,17 @@ impl ResponsesInputItem {
         }
     }
 
+    /// Build a `user` message.
     pub fn user(text: impl Into<String>) -> Self {
         Self::message("user", text)
     }
 
+    /// Build an `assistant` message.
     pub fn assistant(text: impl Into<String>) -> Self {
         Self::message("assistant", text)
     }
 
+    /// Build a `system` message.
     pub fn system(text: impl Into<String>) -> Self {
         Self::message("system", text)
     }
@@ -118,17 +131,21 @@ pub struct ResponsesTool {
     /// Always `"function"`.
     #[serde(rename = "type")]
     pub kind: String,
+    /// Function name as exposed to the model.
     pub name: String,
+    /// Optional human-readable description.
     #[serde(skip_serializing_if = "String::is_empty", default)]
     pub description: String,
     /// `Some(true)` enables strict schema validation; `None` keeps the
     /// server default (serialized as `null` per the upstream contract).
     pub strict: Option<bool>,
+    /// JSON Schema describing the function's parameters.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub parameters: Option<Value>,
 }
 
 impl ResponsesTool {
+    /// Build a function tool.
     pub fn function(
         name: impl Into<String>,
         description: impl Into<String>,
@@ -149,7 +166,9 @@ impl ResponsesTool {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ResponsesInput {
+    /// A single text prompt.
     Text(String),
+    /// Structured sequence of input items.
     Items(Vec<ResponsesInputItem>),
 }
 
@@ -174,23 +193,33 @@ impl From<Vec<ResponsesInputItem>> for ResponsesInput {
 /// Request body for the Responses API.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesRequest {
+    /// Model id.
     pub model: String,
+    /// Input — either a single string or structured items.
     pub input: Option<ResponsesInput>,
+    /// Stream-mode flag. The SDK forces `Some(true)` for streaming calls
+    /// and `Some(false)` for blocking ones.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub stream: Option<bool>,
+    /// Max output tokens.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub max_output_tokens: Option<u32>,
+    /// Sampling temperature.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub temperature: Option<f64>,
+    /// Nucleus sampling probability.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub top_p: Option<f64>,
+    /// Reasoning configuration.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub reasoning: Option<ResponsesReasoning>,
+    /// Tools available to the model.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub tools: Vec<ResponsesTool>,
     /// `"auto"`, `"none"`, or `{"type":"function","function":{"name":...}}`.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub tool_choice: Option<Value>,
+    /// Plugin configuration.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub plugins: Vec<Plugin>,
 }
@@ -204,26 +233,31 @@ impl ResponsesRequest {
         }
     }
 
+    /// Set the input (string or structured items).
     pub fn input(mut self, input: impl Into<ResponsesInput>) -> Self {
         self.input = Some(input.into());
         self
     }
 
+    /// Cap the output length in tokens.
     pub fn max_output_tokens(mut self, n: u32) -> Self {
         self.max_output_tokens = Some(n);
         self
     }
 
+    /// Set sampling temperature.
     pub fn temperature(mut self, t: f64) -> Self {
         self.temperature = Some(t);
         self
     }
 
+    /// Set nucleus sampling probability.
     pub fn top_p(mut self, p: f64) -> Self {
         self.top_p = Some(p);
         self
     }
 
+    /// Set reasoning effort (`minimal`, `low`, `medium`, `high`).
     pub fn reasoning_effort(mut self, effort: impl Into<String>) -> Self {
         self.reasoning = Some(ResponsesReasoning {
             effort: effort.into(),
@@ -231,11 +265,13 @@ impl ResponsesRequest {
         self
     }
 
+    /// Replace the tool list.
     pub fn tools(mut self, tools: impl IntoIterator<Item = ResponsesTool>) -> Self {
         self.tools = tools.into_iter().collect();
         self
     }
 
+    /// Set tool-selection strategy.
     pub fn tool_choice(mut self, choice: Value) -> Self {
         self.tool_choice = Some(choice);
         self
@@ -330,12 +366,16 @@ impl ResponsesRequest {
 /// Annotation attached to an [`ResponsesOutputContent`] (e.g. URL citation).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesAnnotation {
+    /// Annotation type discriminator (e.g. `"url_citation"`).
     #[serde(rename = "type", default)]
     pub kind: String,
+    /// Cited URL.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub url: String,
+    /// Start character offset within the output text.
     #[serde(default)]
     pub start_index: i64,
+    /// End character offset within the output text.
     #[serde(default)]
     pub end_index: i64,
 }
@@ -343,10 +383,13 @@ pub struct ResponsesAnnotation {
 /// A content item inside [`ResponsesOutput::content`].
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesOutputContent {
+    /// Content type (`"output_text"`, `"reasoning"`, ...).
     #[serde(rename = "type", default)]
     pub kind: String,
+    /// Text body.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub text: String,
+    /// Inline annotations (citations, etc.).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub annotations: Vec<ResponsesAnnotation>,
     /// Encrypted reasoning chain (for `reasoning` content).
@@ -360,14 +403,19 @@ pub struct ResponsesOutputContent {
 /// A single output item: `"message"` or `"function_call"`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesOutput {
+    /// Output type (`"message"`, `"function_call"`, ...).
     #[serde(rename = "type", default)]
     pub kind: String,
+    /// Stable item identifier.
     #[serde(default)]
     pub id: String,
+    /// Item status, when carried.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub status: String,
+    /// Message role (only for `message` items).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub role: String,
+    /// Content parts (only for `message` items).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub content: Vec<ResponsesOutputContent>,
     /// `function_call` only.
@@ -384,12 +432,16 @@ pub struct ResponsesOutput {
 /// Token usage for a Responses request.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResponsesUsage {
+    /// Input token count.
     #[serde(default)]
     pub input_tokens: u64,
+    /// Output token count.
     #[serde(default)]
     pub output_tokens: u64,
+    /// Total tokens (input + output).
     #[serde(default)]
     pub total_tokens: u64,
+    /// Reasoning tokens (included in output).
     #[serde(default)]
     pub reasoning_tokens: u64,
 }
@@ -397,20 +449,28 @@ pub struct ResponsesUsage {
 /// Full unary or streaming-chunk response.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResponsesResponse {
+    /// Response identifier.
     #[serde(default)]
     pub id: String,
+    /// Wire object discriminator.
     #[serde(default)]
     pub object: String,
+    /// Unix-seconds creation timestamp.
     #[serde(default)]
     pub created_at: i64,
+    /// Model that produced the response.
     #[serde(default)]
     pub model: String,
+    /// Output items.
     #[serde(default)]
     pub output: Vec<ResponsesOutput>,
+    /// Token usage accounting.
     #[serde(default)]
     pub usage: ResponsesUsage,
+    /// Response status string.
     #[serde(default)]
     pub status: String,
+    /// Free-form provider metadata.
     #[serde(default)]
     pub metadata: Option<Value>,
 }
@@ -460,7 +520,7 @@ impl ResponsesResponse {
 }
 
 impl Client {
-    /// **[BETA]** Submit a unary Responses API request.
+    /// **\[BETA\]** Submit a unary Responses API request.
     ///
     /// `POST /responses`. `req.stream` is forced to `Some(false)` to keep
     /// the unary path honest. Returns the decoded [`ResponsesResponse`].
@@ -470,7 +530,7 @@ impl Client {
         request::execute_json(self, "responses", &req).await
     }
 
-    /// **[BETA]** Open a streaming Responses API request.
+    /// **\[BETA\]** Open a streaming Responses API request.
     ///
     /// `POST /responses` with SSE. Returns an [`EventStream`] whose items
     /// deserialize into [`ResponsesResponse`] chunks. Reconnect / cancel

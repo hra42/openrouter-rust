@@ -1,108 +1,155 @@
 # openrouter-rust
 
+[![Crates.io](https://img.shields.io/crates/v/openrouter.svg)](https://crates.io/crates/openrouter)
+[![Docs.rs](https://docs.rs/openrouter/badge.svg)](https://docs.rs/openrouter)
+[![CI](https://github.com/hra42/openrouter-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/hra42/openrouter-rust/actions/workflows/ci.yml)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](./LICENSE)
-[![Status](https://img.shields.io/badge/status-planning-orange.svg)](#roadmap)
 
-An idiomatic, async Rust SDK for the [OpenRouter](https://openrouter.ai) API — a Rust port of [openrouter-go](https://github.com/hra42/openrouter-go).
+An idiomatic, async Rust SDK for the [OpenRouter](https://openrouter.ai) API.
+A Rust port of [openrouter-go](https://github.com/hra42/openrouter-go);
+behavior and defaults are kept in sync with the Go SDK on purpose.
 
-> 🚧 **Status:** Planning. Implementation has not started.
+## Install
 
-## Goals
+```bash
+cargo add openrouter
+```
 
-- **Complete API coverage** — every endpoint exposed by the Go SDK, including beta surfaces (Responses API, video generation, OAuth PKCE, broadcast webhooks).
-- **Idiomatic Rust** — builder pattern for `Client` and requests, `Result`-based errors via `thiserror`, async via `tokio` + `reqwest`, `serde` for (de)serialization.
-- **Streaming-first** — full SSE support with reconnection, exposed as `futures::Stream<Item = Result<T>>`.
-- **Thread-safe** — `Client` is cheap to clone (`Arc` inside) and safe across tasks.
-- **Lean dependencies** — `reqwest`, `serde`, `tokio`, `thiserror`, `futures`. No unnecessary deps.
+MSRV is **1.75**. Optional `beta` feature gates the Responses API:
 
-## Planned feature surface
+```toml
+[dependencies]
+openrouter = { version = "0.1", features = ["beta"] }
+```
 
-The SDK will mirror the Go implementation:
+## Quickstart
 
-- Chat completions and legacy completions (streaming + non-streaming)
-- Tool / function calling, including streaming tool-call deltas
-- Structured outputs (JSON Schema + JSON mode)
-- MCP tool conversion utilities
-- Message transforms (`middle-out`)
-- Web search plugin
-- Full provider routing: order, sort, only / ignore, quantizations, max price, data-collection policy, require parameters, ZDR
-- Model suffixes (`:nitro`, `:floor`) and reasoning tokens
-- Multimodal inputs: images, PDFs (with parsing engines + annotation reuse), audio, text files, plus a `ContentBuilder` for mixed content
-- Discovery: list models, list model endpoints, list providers
-- Account: credits, activity analytics, current key info
-- Provisioning-key management: list / get / create / update / delete API keys
-- Workspaces, organization members, guardrails (spend caps, allowlists)
-- Rerank endpoint
-- Text-to-speech (`/audio/speech`)
-- Async video generation (submit / poll / download)
-- Broadcast webhook parsing (OTLP JSON)
-- OAuth PKCE authorization-code exchange helper
-- **\[beta]** Responses API (reasoning, tools, web search, streaming) — gated behind a `beta` cargo feature
-
-## Quickstart (planned API sketch)
-
-```rust
-use openrouter::{Client, Message, Role};
+```rust,no_run
+use openrouter::{ChatCompletionRequest, Client, Message};
 
 #[tokio::main]
 async fn main() -> openrouter::Result<()> {
     let client = Client::builder()
-        .api_key(std::env::var("OPENROUTER_API_KEY")?)
+        .api_key(std::env::var("OPENROUTER_API_KEY").unwrap())
         .app_name("my-app")
-        .referer("https://my-app.example.com")
         .build()?;
 
-    let response = client
-        .chat_complete()
-        .model("anthropic/claude-3-opus")
-        .messages([Message::user("Hello, how are you?")])
-        .send()
-        .await?;
-
-    println!("{}", response.choices[0].message.content_text());
+    let req = ChatCompletionRequest::new(
+        "google/gemini-3.1-flash-lite",
+        vec![Message::user("Hello, who are you?")],
+    );
+    let resp = client.chat_complete(req).await?;
+    if let Some(text) = resp.choices.first()
+        .and_then(|c| c.message.as_ref())
+        .and_then(|m| m.content_text())
+    {
+        println!("{text}");
+    }
     Ok(())
 }
 ```
 
 Streaming:
 
-```rust
+```rust,no_run
 use futures::StreamExt;
+use openrouter::{ChatCompletionRequest, Client, Message};
 
-let mut stream = client
-    .chat_complete_stream()
-    .model("anthropic/claude-3-opus")
-    .messages([Message::user("Stream me a poem.")])
-    .send()
-    .await?;
-
+# async fn run() -> openrouter::Result<()> {
+let client = Client::builder().api_key("sk-…").build()?;
+let req = ChatCompletionRequest::new(
+    "google/gemini-3.1-flash-lite",
+    vec![Message::user("Stream a haiku.")],
+);
+let mut stream = client.chat_complete_stream(req).await?;
 while let Some(chunk) = stream.next().await {
     let chunk = chunk?;
-    if let Some(delta) = chunk.choices.first().and_then(|c| c.delta.content.as_deref()) {
+    if let Some(delta) = chunk.choices.first()
+        .and_then(|c| c.delta.as_ref())
+        .and_then(|d| d.content.as_deref())
+    {
         print!("{delta}");
     }
 }
+# Ok(()) }
 ```
 
-> The exact API may shift during Phase 1 (foundation). Locked-in shape lands with the v0.1.0 release.
+## Features
+
+| Surface | Status |
+|---|---|
+| Chat completions + legacy completions (blocking + streaming) | ✅ |
+| Tool / function calling (incl. streaming tool-call deltas) | ✅ |
+| Structured outputs (JSON Schema + JSON mode) | ✅ |
+| MCP tool conversion | ✅ |
+| Message transforms (`middle-out`) | ✅ |
+| Web-search plugin | ✅ |
+| Provider routing (order, sort, only/ignore, quantization, max price, ZDR) | ✅ |
+| Reasoning tokens (effort + max-tokens) | ✅ |
+| Multimodal (images, PDFs with parsing engines, audio, text files) | ✅ |
+| Discovery (`/models`, `/models/{author}/{slug}/endpoints`, `/providers`) | ✅ |
+| Account (credits, activity, current key, ZDR endpoint listing) | ✅ |
+| Provisioning key CRUD | ✅ |
+| Workspaces + organization members | ✅ |
+| Guardrails (spend caps, allowlists, key/member assignments) | ✅ |
+| Rerank (`/rerank`) | ✅ |
+| Text-to-speech (`/audio/speech`) | ✅ |
+| Async video generation (submit / poll / download) | ✅ |
+| Broadcast webhook parser (OTLP JSON) | ✅ |
+| OAuth PKCE helpers | ✅ |
+| **\[beta\]** Responses API (gated behind the `beta` cargo feature) | ✅ |
+
+## Recipes
+
+In-tree recipes are embedded in rustdoc and viewable on docs.rs:
+
+- [Quickstart](./docs/recipes/quickstart.md)
+- [Streaming](./docs/recipes/streaming.md)
+- [Tools](./docs/recipes/tools.md)
+- [Structured outputs](./docs/recipes/structured_outputs.md)
+- [Multimodal](./docs/recipes/multimodal.md)
+- [Provider routing](./docs/recipes/provider_routing.md)
+- [ZDR](./docs/recipes/zdr.md)
+- [Key management](./docs/recipes/key_management.md)
+
+## End-to-end smoke tests
+
+The `e2e` example is a single binary that mirrors the Go SDK's
+`cmd/openrouter-test/` layout. Every subcommand hits the live OpenRouter
+API using `google/gemini-3.1-flash-lite` by default.
+
+```bash
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- --help
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- chat
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- stream
+OPENROUTER_API_KEY=sk-... cargo run --example e2e -- tools
+```
+
+Subcommands: `chat`, `stream`, `completion`, `tools`, `transforms`,
+`websearch`, `models`, `endpoints`, `providers`, `credits`, `activity`,
+`key`, `listkeys`, `createkey`, `updatekey`, `deletekey`. The `*key`
+provisioning subcommands require a provisioning key, not a runtime key.
 
 ## Roadmap
 
-Work is broken into 7 phases:
-
-1. **Foundation** ✅ — crate scaffolding, client builder, error model, retry/backoff, core types
-2. **Core Endpoints & Streaming** ✅ — chat, legacy completions, SSE infrastructure
-3. **Advanced Inference** ✅ — tool calling, structured outputs, MCP, transforms, web search, provider routing, reasoning
-4. **Multimodal Inputs** ✅ — images, PDFs (with parsing engines + annotation reuse), audio, text files, `ContentBuilder` for mixed content
-5. **Discovery & Account** ✅ — models, endpoints, providers, credits, activity, API key CRUD
-6. **Org & Beta Surfaces** ✅ — workspaces, members, guardrails (+ ZDR endpoints), rerank, TTS, video, broadcast webhooks, OAuth PKCE, **[beta]** Responses API (gated behind the `beta` cargo feature)
-7. **Testing, Docs & Release** — unit + E2E test coverage, docs site, crates.io publish
+| # | Phase | Status |
+|---|---|---|
+| 1 | Foundation — client builder, error model, retry/backoff, core types | ✅ |
+| 2 | Core Endpoints & Streaming — chat, legacy completions, SSE | ✅ |
+| 3 | Advanced Inference — tools, structured outputs, MCP, transforms, web search, provider routing, reasoning | ✅ |
+| 4 | Multimodal Inputs — images, PDFs, audio, text files, `ContentBuilder` | ✅ |
+| 5 | Discovery & Account — models, endpoints, providers, credits, activity, key CRUD | ✅ |
+| 6 | Org & Beta Surfaces — workspaces, members, guardrails, ZDR, rerank, TTS, video, webhooks, OAuth, **\[beta\]** Responses API | ✅ |
+| 7 | Testing, Docs & Release — unit + E2E test coverage, docs site, crates.io publish | ✅ |
 
 ## Reference
 
 - Go SDK this port is based on: <https://github.com/hra42/openrouter-go>
 - OpenRouter API docs: <https://openrouter.ai/docs>
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- AI agent guide: [AGENTS.md](./AGENTS.md)
 
 ## License
 
-Released into the public domain under [The Unlicense](./LICENSE). Same license as the Go SDK.
+Released into the public domain under [The Unlicense](./LICENSE). Same
+license as the Go SDK.
