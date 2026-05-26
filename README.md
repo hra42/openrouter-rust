@@ -90,9 +90,9 @@ while let Some(chunk) = stream.next().await {
 
 Work is broken into 7 phases:
 
-1. **Foundation** — crate scaffolding, client builder, error model, retry/backoff, core types
-2. **Core Endpoints & Streaming** — chat, legacy completions, SSE infrastructure
-3. **Advanced Inference** — tool calling, structured outputs, MCP, transforms, web search, provider routing, reasoning
+1. **Foundation** ✅ — crate scaffolding, client builder, error model, retry/backoff, core types
+2. **Core Endpoints & Streaming** ✅ — chat, legacy completions, SSE infrastructure
+3. **Advanced Inference** ✅ — tool calling, structured outputs, MCP, transforms, web search, provider routing, reasoning
 4. **Multimodal Inputs** — images, PDFs, audio, text files, content builder
 5. **Discovery & Account** — models, endpoints, providers, credits, activity, API key CRUD
 6. **Org & Beta Surfaces** — workspaces, members, guardrails, rerank, TTS, video, webhooks, OAuth PKCE, Responses API
