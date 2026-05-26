@@ -178,21 +178,25 @@ impl FileParserEngine {
 }
 
 /// A single file attached to a message (PDF or other parser-supported type).
-/// Provide either `file_url` (remote) or `file_data` (already-encoded data URL).
+///
+/// OpenRouter (and the Go SDK) carries both URLs and base64 data URLs in the
+/// same `file_data` field — there is no separate `file_url` field on the
+/// wire. The [`FileRef`](super::message::FileRef) struct still exposes both
+/// for forward compatibility, but in practice callers should populate
+/// `file_data`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct File {
     pub filename: String,
-    pub file_url: Option<String>,
-    pub file_data: Option<String>,
+    pub file_data: String,
 }
 
 impl File {
-    /// File served from a public URL.
+    /// File served from a public URL. The URL is sent in `file_data` (this
+    /// matches the Go SDK's `CreateUserMessageWithPDF`).
     pub fn from_url(filename: impl Into<String>, url: impl Into<String>) -> Self {
         Self {
             filename: filename.into(),
-            file_url: Some(url.into()),
-            file_data: None,
+            file_data: url.into(),
         }
     }
 
@@ -200,8 +204,7 @@ impl File {
     pub fn from_data_url(filename: impl Into<String>, data_url: impl Into<String>) -> Self {
         Self {
             filename: filename.into(),
-            file_url: None,
-            file_data: Some(data_url.into()),
+            file_data: data_url.into(),
         }
     }
 
@@ -220,8 +223,8 @@ impl File {
         ContentPart::File {
             file: FileRef {
                 filename: Some(self.filename),
-                file_data: self.file_data,
-                file_url: self.file_url,
+                file_data: Some(self.file_data),
+                file_url: None,
             },
         }
     }
@@ -636,7 +639,7 @@ mod tests {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": "summarize"},
-                    {"type": "file", "file": {"filename": "p.pdf", "file_url": "https://x/p.pdf"}},
+                    {"type": "file", "file": {"filename": "p.pdf", "file_data": "https://x/p.pdf"}},
                 ]
             })
         );
@@ -751,8 +754,8 @@ mod tests {
         match &parts[1] {
             ContentPart::File { file } => {
                 assert_eq!(file.filename.as_deref(), Some("p.pdf"));
-                assert_eq!(file.file_url.as_deref(), Some("https://x/p.pdf"));
-                assert!(file.file_data.is_none());
+                assert_eq!(file.file_data.as_deref(), Some("https://x/p.pdf"));
+                assert!(file.file_url.is_none());
             }
             _ => panic!("expected file part"),
         }
