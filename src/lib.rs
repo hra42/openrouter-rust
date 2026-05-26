@@ -41,3 +41,9 @@ pub use types::{
     ProviderInfo, ProvidersResponse, ReasoningConfig, ResponseFormat, Role, Tool, ToolCall,
     ToolChoice, UpdateKeyRequest, UpdateKeyResponse, UrlCitation, Usage, WebPluginConfig,
 };
+pub use types::{
+    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateWorkspaceRequest,
+    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse, ListWorkspacesOptions,
+    ListWorkspacesResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace,
+    WorkspaceMember, WorkspaceMemberRole,
+};

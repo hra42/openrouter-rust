@@ -12,11 +12,14 @@ use crate::request;
 use crate::retry::RetryConfig;
 use crate::stream::EventStream;
 use crate::types::{
-    ActivityOptions, ActivityResponse, ChatCompletionRequest, ChatCompletionResponse,
-    CompletionRequest, CompletionResponse, CreateKeyRequest, CreateKeyResponse, CreditsResponse,
-    DeleteKeyResponse, GetKeyByHashResponse, KeyResponse, ListKeysOptions, ListKeysResponse,
-    ListModelsOptions, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
-    UpdateKeyRequest, UpdateKeyResponse,
+    ActivityOptions, ActivityResponse, BulkAddWorkspaceMembersResponse,
+    BulkRemoveWorkspaceMembersResponse, BulkWorkspaceMembersRequest, ChatCompletionRequest,
+    ChatCompletionResponse, CompletionRequest, CompletionResponse, CreateKeyRequest,
+    CreateKeyResponse, CreateWorkspaceRequest, CreateWorkspaceResponse, CreditsResponse,
+    DeleteKeyResponse, DeleteWorkspaceResponse, GetKeyByHashResponse, GetWorkspaceResponse,
+    KeyResponse, ListKeysOptions, ListKeysResponse, ListModelsOptions, ListWorkspacesOptions,
+    ListWorkspacesResponse, ModelEndpointsResponse, ModelsResponse, Provider, ProvidersResponse,
+    UpdateKeyRequest, UpdateKeyResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse,
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
@@ -272,6 +275,126 @@ impl Client {
         }
         let path = format!("keys/{}", percent_encode_segment(hash));
         request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// List workspaces on the organization.
+    ///
+    /// `GET /workspaces`. **Requires a provisioning (management) API key.**
+    /// Supports `offset` / `limit` pagination via [`ListWorkspacesOptions`].
+    pub async fn list_workspaces(
+        &self,
+        opts: Option<&ListWorkspacesOptions>,
+    ) -> Result<ListWorkspacesResponse> {
+        let query = opts
+            .copied()
+            .map(ListWorkspacesOptions::to_query)
+            .unwrap_or_default();
+        request::execute_json_get(self, "workspaces", &query).await
+    }
+
+    /// Create a new workspace.
+    ///
+    /// `POST /workspaces`. **Requires a provisioning key.** `name` and `slug`
+    /// must be non-empty.
+    pub async fn create_workspace(
+        &self,
+        req: &CreateWorkspaceRequest,
+    ) -> Result<CreateWorkspaceResponse> {
+        if req.name.is_empty() {
+            return Err(Error::InvalidInput("name is required"));
+        }
+        if req.slug.is_empty() {
+            return Err(Error::InvalidInput("slug is required"));
+        }
+        request::execute_json(self, "workspaces", req).await
+    }
+
+    /// Fetch a single workspace by UUID or slug.
+    ///
+    /// `GET /workspaces/{id_or_slug}`. **Requires a provisioning key.**
+    pub async fn get_workspace(&self, id_or_slug: &str) -> Result<GetWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_get(self, &path, &[]).await
+    }
+
+    /// Update an existing workspace by UUID or slug. Pass only the fields you
+    /// want to change on [`UpdateWorkspaceRequest`].
+    ///
+    /// `PATCH /workspaces/{id_or_slug}`. **Requires a provisioning key.**
+    pub async fn update_workspace(
+        &self,
+        id_or_slug: &str,
+        req: &UpdateWorkspaceRequest,
+    ) -> Result<UpdateWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_method(self, reqwest::Method::PATCH, &path, Some(req)).await
+    }
+
+    /// Delete a workspace by UUID or slug.
+    ///
+    /// `DELETE /workspaces/{id_or_slug}`. **Requires a provisioning key.** The
+    /// default workspace cannot be deleted, and any workspace with active API
+    /// keys returns an error.
+    pub async fn delete_workspace(&self, id_or_slug: &str) -> Result<DeleteWorkspaceResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        let path = format!("workspaces/{}", percent_encode_segment(id_or_slug));
+        request::execute_json_method::<(), _>(self, reqwest::Method::DELETE, &path, None).await
+    }
+
+    /// Bulk-add organization members to a workspace. Members are assigned the
+    /// same role they hold in the organization.
+    ///
+    /// `POST /workspaces/{id_or_slug}/members/add`. **Requires a provisioning
+    /// key.**
+    pub async fn add_workspace_members(
+        &self,
+        id_or_slug: &str,
+        user_ids: &[String],
+    ) -> Result<BulkAddWorkspaceMembersResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        if user_ids.is_empty() {
+            return Err(Error::InvalidInput("user_ids cannot be empty"));
+        }
+        let path = format!(
+            "workspaces/{}/members/add",
+            percent_encode_segment(id_or_slug)
+        );
+        let body = BulkWorkspaceMembersRequest { user_ids };
+        request::execute_json(self, &path, &body).await
+    }
+
+    /// Bulk-remove members from a workspace. Members with active API keys in
+    /// the workspace cannot be removed.
+    ///
+    /// `POST /workspaces/{id_or_slug}/members/remove`. **Requires a
+    /// provisioning key.**
+    pub async fn remove_workspace_members(
+        &self,
+        id_or_slug: &str,
+        user_ids: &[String],
+    ) -> Result<BulkRemoveWorkspaceMembersResponse> {
+        if id_or_slug.is_empty() {
+            return Err(Error::InvalidInput("id_or_slug cannot be empty"));
+        }
+        if user_ids.is_empty() {
+            return Err(Error::InvalidInput("user_ids cannot be empty"));
+        }
+        let path = format!(
+            "workspaces/{}/members/remove",
+            percent_encode_segment(id_or_slug)
+        );
+        let body = BulkWorkspaceMembersRequest { user_ids };
+        request::execute_json(self, &path, &body).await
     }
 
     /// Internal: serialize the request once, open the first stream, and build

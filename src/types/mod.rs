@@ -7,6 +7,7 @@ mod message;
 mod multimodal;
 mod request;
 mod response;
+mod workspace;
 
 pub use account::{
     ActivityData, ActivityOptions, ActivityResponse, ApiKey, CreateKeyRequest, CreateKeyResponse,
@@ -41,4 +42,11 @@ pub use request::{ChatCompletionRequest, CompletionRequest};
 pub use response::{
     ChatCompletionResponse, Choice, CompletionChoice, CompletionResponse, Delta, LogProbs,
     TokenDetails, Usage,
+};
+pub(crate) use workspace::BulkWorkspaceMembersRequest;
+pub use workspace::{
+    BulkAddWorkspaceMembersResponse, BulkRemoveWorkspaceMembersResponse, CreateWorkspaceRequest,
+    CreateWorkspaceResponse, DeleteWorkspaceResponse, GetWorkspaceResponse, ListWorkspacesOptions,
+    ListWorkspacesResponse, UpdateWorkspaceRequest, UpdateWorkspaceResponse, Workspace,
+    WorkspaceMember, WorkspaceMemberRole,
 };
