@@ -4,6 +4,16 @@ All notable changes to this crate are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-05-27
+
+### Changed
+
+- Release infrastructure only: no user-facing code changes. Adds a
+  tag-triggered GitHub Actions release workflow using crates.io
+  Trusted Publishing (OIDC) so future releases ship without a
+  long-lived `CARGO_REGISTRY_TOKEN`. Bumps `actions/checkout` to v6
+  and `softprops/action-gh-release` to v3 across CI.
+
 ## [0.1.0] - 2026-05-26
 
 Initial release. A Rust port of [openrouter-go](https://github.com/hra42/openrouter-go);
@@ -52,4 +62,5 @@ behavior and defaults are kept in sync with the Go SDK on purpose.
   routing, ZDR, and key management embedded in rustdoc; AGENTS.md for AI
   coding agents.
 
+[0.1.1]: https://github.com/hra42/openrouter-rust/releases/tag/v0.1.1
 [0.1.0]: https://github.com/hra42/openrouter-rust/releases/tag/v0.1.0
