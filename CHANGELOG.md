@@ -4,6 +4,24 @@ All notable changes to this crate are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-14
+
+### Added
+
+- An opt-in `browser` feature for `wasm32-unknown-unknown` with browser
+  randomness, timers, Fetch/ReadableStream transport, local futures, and
+  abort-on-drop stream cancellation.
+- `ClientBuilder::stream_reconnects` for configuring a lifetime-bounded
+  reconnect budget, including disabling request replay with `0`.
+- A public, unauthenticated `oauth::exchange_auth_code` function for browser
+  OAuth PKCE applications.
+
+### Changed
+
+- CI now checks that the library builds for browser WebAssembly with the
+  `browser` feature enabled.
+- Browser installation and transport behavior are documented in the README.
+
 ## [0.1.1] - 2026-05-27
 
 ### Changed
@@ -62,5 +80,6 @@ behavior and defaults are kept in sync with the Go SDK on purpose.
   routing, ZDR, and key management embedded in rustdoc; AGENTS.md for AI
   coding agents.
 
+[0.2.0]: https://github.com/hra42/openrouter-rust/releases/tag/v0.2.0
 [0.1.1]: https://github.com/hra42/openrouter-rust/releases/tag/v0.1.1
 [0.1.0]: https://github.com/hra42/openrouter-rust/releases/tag/v0.1.0

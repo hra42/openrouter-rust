@@ -23,14 +23,14 @@ MSRV is **1.75**. Optional `beta` feature gates the Responses API:
 
 ```toml
 [dependencies]
-openrouter-client = { version = "0.1", features = ["beta"] }
+openrouter-client = { version = "0.2", features = ["beta"] }
 ```
 
 Browser WebAssembly builds use the opt-in `browser` feature:
 
 ```toml
 [dependencies]
-openrouter-client = { version = "0.1", features = ["browser"] }
+openrouter-client = { version = "0.2", features = ["browser"] }
 ```
 
 The feature selects browser randomness, timers, Fetch/ReadableStream transport,
