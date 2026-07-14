@@ -15,6 +15,7 @@ use serde::Serialize;
 use crate::client::Client;
 use crate::error::{Error, Result};
 use crate::retry::run_with_retry;
+use crate::stream::StreamResponse;
 
 const HTTP_REFERER: HeaderName = HeaderName::from_static("http-referer");
 const X_TITLE: HeaderName = HeaderName::from_static("x-title");
@@ -299,11 +300,12 @@ where
 ///
 /// Accepts pre-serialized body bytes so the streaming layer can cache them in
 /// the reconnect closure and avoid re-serializing on every reconnect.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn open_stream_bytes(
     client: &Client,
     path: &str,
     body_bytes: Vec<u8>,
-) -> Result<Response> {
+) -> Result<StreamResponse> {
     let url = endpoint_url(client, path)?;
     let headers = base_headers(client, ACCEPT_SSE)?;
 
@@ -319,6 +321,47 @@ pub(crate) async fn open_stream_bytes(
         Ok(resp)
     } else {
         Err(api_error_from_response(resp, status).await)
+    }
+}
+
+#[cfg(all(target_arch = "wasm32", feature = "browser"))]
+pub(crate) async fn open_stream_bytes(
+    client: &Client,
+    path: &str,
+    body_bytes: Vec<u8>,
+) -> Result<StreamResponse> {
+    use gloo_net::http::Request;
+
+    let url = endpoint_url(client, path)?;
+    let abort = web_sys::AbortController::new()
+        .map_err(|error| Error::BrowserTransport(format!("{error:?}")))?;
+    let mut request = Request::post(url.as_str())
+        .header("Authorization", &format!("Bearer {}", client.api_key()))
+        .header("Content-Type", ACCEPT_JSON)
+        .header("Accept", ACCEPT_SSE)
+        .abort_signal(Some(&abort.signal()));
+    if let Some(referer) = client.referer() {
+        request = request.header("HTTP-Referer", referer);
+    }
+    if let Some(name) = client.app_name() {
+        request = request.header("X-Title", name);
+    }
+    let body = js_sys::Uint8Array::from(body_bytes.as_slice());
+    let response = request
+        .body(body)
+        .map_err(|error| Error::BrowserTransport(error.to_string()))?
+        .send()
+        .await
+        .map_err(|error| Error::BrowserTransport(error.to_string()))?;
+    let status = response.status();
+    if (200..=299).contains(&status) {
+        Ok(StreamResponse::new(response, abort))
+    } else {
+        let body = response
+            .binary()
+            .await
+            .map_err(|error| Error::BrowserTransport(error.to_string()))?;
+        Err(Error::from_response_body(status, &body, None))
     }
 }
 

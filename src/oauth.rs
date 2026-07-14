@@ -8,7 +8,7 @@
 //! 3. Build the user-facing authorization URL with [`build_auth_url`] and
 //!    redirect the user to it.
 //! 4. When OpenRouter redirects back with `?code=…`, call
-//!    [`Client::exchange_auth_code`] to swap the code for an API key.
+//!    [`exchange_auth_code`] to swap the code for an API key.
 //!
 //! Shapes mirror the Go SDK (`oauth.go`, `oauth_endpoint.go`).
 
@@ -19,6 +19,8 @@ use url::Url;
 use crate::client::Client;
 use crate::error::{Error, Result};
 use crate::request;
+
+const TOKEN_ENDPOINT: &str = "https://openrouter.ai/api/v1/auth/keys";
 
 /// PKCE code-challenge method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,6 +117,35 @@ pub struct ExchangeAuthCodeResponse {
     pub user_id: Option<String>,
 }
 
+/// Exchange an OAuth authorization code without requiring an existing API key.
+///
+/// This is the browser-friendly entry point for the second half of the PKCE
+/// flow. The authorization code is single-use, so the exchange is not retried.
+pub async fn exchange_auth_code(req: &ExchangeAuthCodeRequest) -> Result<ExchangeAuthCodeResponse> {
+    exchange_auth_code_at(TOKEN_ENDPOINT, req).await
+}
+
+async fn exchange_auth_code_at(
+    endpoint: &str,
+    req: &ExchangeAuthCodeRequest,
+) -> Result<ExchangeAuthCodeResponse> {
+    if req.code.is_empty() {
+        return Err(Error::InvalidInput("code is required"));
+    }
+    let response = reqwest::Client::new()
+        .post(endpoint)
+        .json(req)
+        .send()
+        .await?;
+    let status = response.status();
+    let body = response.bytes().await?;
+    if status.is_success() {
+        Ok(serde_json::from_slice(&body)?)
+    } else {
+        Err(Error::from_response_body(status.as_u16(), &body, None))
+    }
+}
+
 impl Client {
     /// Exchange an authorization code for an API key (`POST /auth/keys`).
     ///
@@ -137,6 +168,8 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::{body_json, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn verifier_is_43_chars_and_url_safe() {
@@ -185,5 +218,30 @@ mod tests {
         assert!(url.contains("callback_url=https%3A%2F%2Fapp.example%2Fcb"));
         assert!(url.contains("code_challenge=CHAL"));
         assert!(url.contains("code_challenge_method=S256"));
+    }
+
+    #[tokio::test]
+    async fn public_exchange_does_not_need_an_api_key() {
+        let server = MockServer::start().await;
+        let request = ExchangeAuthCodeRequest {
+            code: "oauth-code".into(),
+            code_verifier: Some("verifier".into()),
+            code_challenge_method: Some(CodeChallengeMethod::S256),
+        };
+        Mock::given(method("POST"))
+            .and(path("/auth/keys"))
+            .and(body_json(&request))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "key": "sk-user",
+                "user_id": "user-1"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let endpoint = format!("{}/auth/keys", server.uri());
+        let response = exchange_auth_code_at(&endpoint, &request).await.unwrap();
+        assert_eq!(response.key, "sk-user");
+        assert_eq!(response.user_id.as_deref(), Some("user-1"));
     }
 }

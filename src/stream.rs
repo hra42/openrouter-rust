@@ -1,49 +1,83 @@
 //! SSE parser + generic [`EventStream<T>`].
 //!
-//! The parser is hand-rolled — no extra dependency beyond what `reqwest`'s
-//! `stream` feature already provides (`Stream<Item = Result<Bytes>>`). It
-//! handles `data:` accumulation, the `data: [DONE]` terminator, comment
-//! lines (`:` prefix), `\r\n` and bare `\r` line endings, and events split
-//! across chunk boundaries.
+//! The parser is hand-rolled over a byte stream supplied by reqwest on native
+//! targets and the browser's Fetch/ReadableStream APIs on WebAssembly. It
+//! handles `data:` accumulation, the `data: [DONE]` terminator, comment lines
+//! (`:` prefix), `\r\n` and bare `\r` line endings, and events split across
+//! chunk boundaries.
 //!
 //! Reconnection: when the underlying body stream errors on a transient
 //! failure, the stream re-opens via the caller-supplied closure with
-//! exponential backoff capped at [`MAX_RECONNECT_BACKOFF`]. The reconnect
-//! counter resets after the first successful chunk arrives post-reconnect.
-//! Non-transient errors and exhausted budget surface as `Err` and terminate
-//! the stream.
+//! exponential backoff capped at [`MAX_RECONNECT_BACKOFF`]. Reconnects are
+//! counted across the lifetime of the stream, so an intermittent connection
+//! cannot exceed the configured request-replay budget. Non-transient errors
+//! and exhausted budget surface as `Err` and terminate the stream.
 //!
-//! Cancellation: dropping the `EventStream` drops the underlying
-//! `reqwest::Response::bytes_stream`, which closes the connection. No
-//! explicit `CancellationToken` is required — combine with `tokio::select!`
-//! on the consumer side for timeout/cancellation patterns.
+//! Cancellation: dropping the `EventStream` drops the native response stream
+//! or aborts the browser Fetch request. No explicit `CancellationToken` is
+//! required — combine with `tokio::select!` on native targets or an abortable
+//! local future in the browser.
 
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
 use bytes::Bytes;
-use futures::future::BoxFuture;
-use futures::stream::BoxStream;
 use futures::{Stream, StreamExt};
+#[cfg(not(target_arch = "wasm32"))]
 use reqwest::Response;
 use serde::de::DeserializeOwned;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
 
 use crate::error::{Error, Result};
 use crate::retry::MAX_RECONNECT_BACKOFF;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type StreamResponse = Response;
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) struct StreamResponse {
+    response: gloo_net::http::Response,
+    abort: web_sys::AbortController,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl StreamResponse {
+    pub(crate) fn new(response: gloo_net::http::Response, abort: web_sys::AbortController) -> Self {
+        Self { response, abort }
+    }
+}
+
 /// Async factory that re-opens the underlying HTTP response after a
 /// transient failure. Returned by callers in `crate::client` so the stream
 /// can resume the same request body on reconnect.
-pub(crate) type Reopen =
-    Arc<dyn Fn() -> BoxFuture<'static, Result<Response>> + Send + Sync + 'static>;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type Reopen = std::sync::Arc<
+    dyn Fn() -> futures::future::BoxFuture<'static, Result<StreamResponse>> + Send + Sync + 'static,
+>;
+#[cfg(target_arch = "wasm32")]
+pub(crate) type Reopen = std::rc::Rc<
+    dyn Fn() -> futures::future::LocalBoxFuture<'static, Result<StreamResponse>> + 'static,
+>;
 
-type ByteStream = BoxStream<'static, std::result::Result<Bytes, reqwest::Error>>;
+#[cfg(not(target_arch = "wasm32"))]
+type ByteStream = futures::stream::BoxStream<'static, Result<Bytes>>;
+#[cfg(target_arch = "wasm32")]
+type ByteStream = futures::stream::LocalBoxStream<'static, Result<Bytes>>;
+
+#[cfg(not(target_arch = "wasm32"))]
 type SleepFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
-type ReopenFuture = BoxFuture<'static, Result<Response>>;
+#[cfg(target_arch = "wasm32")]
+type SleepFuture = Pin<Box<dyn Future<Output = ()> + 'static>>;
+
+#[cfg(not(target_arch = "wasm32"))]
+type ReopenFuture = futures::future::BoxFuture<'static, Result<StreamResponse>>;
+#[cfg(target_arch = "wasm32")]
+type ReopenFuture = futures::future::LocalBoxFuture<'static, Result<StreamResponse>>;
 
 /// A stream of deserialized SSE events.
 ///
@@ -54,6 +88,7 @@ pub struct EventStream<T: DeserializeOwned> {
     buf: SseBuffer,
     reopen: Option<Reopen>,
     reconnect_attempt: u32,
+    max_reconnects: u32,
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -61,6 +96,7 @@ impl<T: DeserializeOwned> std::fmt::Debug for EventStream<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EventStream")
             .field("reconnect_attempt", &self.reconnect_attempt)
+            .field("max_reconnects", &self.max_reconnects)
             .field("buffered", &self.buf.pending_len())
             .field("state", &self.state.tag())
             .finish()
@@ -94,12 +130,13 @@ impl<T: DeserializeOwned> EventStream<T> {
     /// reconnect closure. The closure is invoked on transient mid-stream
     /// failures with exponential backoff.
     #[allow(dead_code)] // Consumed by the streaming endpoints (HRA-123).
-    pub(crate) fn new(initial: Response, reopen: Reopen) -> Self {
+    pub(crate) fn new(initial: StreamResponse, reopen: Reopen, max_reconnects: u32) -> Self {
         Self {
-            state: State::Reading(initial.bytes_stream().boxed()),
+            state: State::Reading(box_byte_stream(initial)),
             buf: SseBuffer::default(),
             reopen: Some(reopen),
             reconnect_attempt: 0,
+            max_reconnects,
             _marker: PhantomData,
         }
     }
@@ -113,6 +150,7 @@ impl<T: DeserializeOwned> EventStream<T> {
             buf: SseBuffer::default(),
             reopen: None,
             reconnect_attempt: 0,
+            max_reconnects: 0,
             _marker: PhantomData,
         }
     }
@@ -150,18 +188,19 @@ impl<T: DeserializeOwned> Stream for EventStream<T> {
             match cur {
                 State::Reading(mut s) => match s.poll_next_unpin(cx) {
                     Poll::Ready(Some(Ok(chunk))) => {
-                        self.reconnect_attempt = 0;
                         self.buf.push(&chunk);
                         self.state = State::Reading(s);
                         continue;
                     }
-                    Poll::Ready(Some(Err(e))) => {
-                        let err: Error = e.into();
-                        if err.is_transient() && self.reopen.is_some() {
+                    Poll::Ready(Some(Err(err))) => {
+                        if err.is_transient()
+                            && self.reopen.is_some()
+                            && self.reconnect_attempt < self.max_reconnects
+                        {
                             // Schedule a reconnect.
-                            self.reconnect_attempt = self.reconnect_attempt.saturating_add(1);
                             let delay = self.reconnect_delay();
-                            self.state = State::Backoff(Box::pin(tokio::time::sleep(delay)));
+                            self.reconnect_attempt = self.reconnect_attempt.saturating_add(1);
+                            self.state = State::Backoff(Box::pin(crate::timer::sleep(delay)));
                             continue;
                         }
                         self.state = State::Done;
@@ -208,15 +247,15 @@ impl<T: DeserializeOwned> Stream for EventStream<T> {
                 },
                 State::Reopening(mut fut) => match fut.as_mut().poll(cx) {
                     Poll::Ready(Ok(resp)) => {
-                        self.state = State::Reading(resp.bytes_stream().boxed());
+                        self.state = State::Reading(box_byte_stream(resp));
                         continue;
                     }
                     Poll::Ready(Err(err)) => {
-                        if err.is_transient() {
+                        if err.is_transient() && self.reconnect_attempt < self.max_reconnects {
                             // Try again, subject to the cap.
-                            self.reconnect_attempt = self.reconnect_attempt.saturating_add(1);
                             let delay = self.reconnect_delay();
-                            self.state = State::Backoff(Box::pin(tokio::time::sleep(delay)));
+                            self.reconnect_attempt = self.reconnect_attempt.saturating_add(1);
+                            self.state = State::Backoff(Box::pin(crate::timer::sleep(delay)));
                             continue;
                         }
                         self.state = State::Done;
@@ -233,6 +272,44 @@ impl<T: DeserializeOwned> Stream for EventStream<T> {
                 }
             }
         }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn box_byte_stream(response: StreamResponse) -> ByteStream {
+    response
+        .bytes_stream()
+        .map(|result| result.map_err(Error::from))
+        .boxed()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn box_byte_stream(response: StreamResponse) -> ByteStream {
+    let StreamResponse { response, abort } = response;
+    let Some(body) = response.body() else {
+        return futures::stream::empty().boxed_local();
+    };
+    let abort = AbortOnDrop(abort);
+    wasm_streams::ReadableStream::from_raw(body.unchecked_into())
+        .into_stream()
+        .map(move |item| {
+            let _abort = &abort;
+            let value = item.map_err(|error| Error::BrowserTransport(format!("{error:?}")))?;
+            let array = js_sys::Uint8Array::new(&value);
+            let mut bytes = vec![0; array.length() as usize];
+            array.copy_to(&mut bytes);
+            Ok(Bytes::from(bytes))
+        })
+        .boxed_local()
+}
+
+#[cfg(target_arch = "wasm32")]
+struct AbortOnDrop(web_sys::AbortController);
+
+#[cfg(target_arch = "wasm32")]
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        self.0.abort();
     }
 }
 
@@ -362,6 +439,8 @@ mod tests {
     use super::*;
     use futures::stream;
     use pretty_assertions::assert_eq;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
     fn drain_buffer(buf: &mut SseBuffer) -> Vec<SseEvent> {
         let mut out = Vec::new();
@@ -459,7 +538,7 @@ mod tests {
 
     #[tokio::test]
     async fn event_stream_yields_decoded_events_then_done() {
-        let chunks: Vec<std::result::Result<Bytes, reqwest::Error>> = vec![
+        let chunks: Vec<Result<Bytes>> = vec![
             Ok(Bytes::from_static(b"data: {\"x\":1}\n\n")),
             Ok(Bytes::from_static(b"data: {\"x\":2}\n\n")),
             Ok(Bytes::from_static(b"data: [DONE]\n\n")),
@@ -475,8 +554,7 @@ mod tests {
 
     #[tokio::test]
     async fn event_stream_surfaces_malformed_payload_as_error() {
-        let chunks: Vec<std::result::Result<Bytes, reqwest::Error>> =
-            vec![Ok(Bytes::from_static(b"data: not-json\n\n"))];
+        let chunks: Vec<Result<Bytes>> = vec![Ok(Bytes::from_static(b"data: not-json\n\n"))];
         let body: ByteStream = stream::iter(chunks).boxed();
         let mut s: EventStream<Sample> = EventStream::from_bytes_stream(body);
         let item = s.next().await.unwrap();
@@ -485,7 +563,7 @@ mod tests {
 
     #[tokio::test]
     async fn event_stream_handles_split_event_across_chunks() {
-        let chunks: Vec<std::result::Result<Bytes, reqwest::Error>> = vec![
+        let chunks: Vec<Result<Bytes>> = vec![
             Ok(Bytes::from_static(b"data: {\"x")),
             Ok(Bytes::from_static(b"\":7}\n\n")),
             Ok(Bytes::from_static(b"data: [DONE]\n\n")),
@@ -495,5 +573,30 @@ mod tests {
         let a = s.next().await.unwrap().unwrap();
         assert_eq!(a, Sample { x: 7 });
         assert!(s.next().await.is_none());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn reconnect_budget_is_lifetime_bounded() {
+        let body: ByteStream =
+            stream::iter(vec![Err(Error::BrowserTransport("lost".into()))]).boxed();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let reopen_calls = Arc::clone(&calls);
+        let reopen: Reopen = Arc::new(move || {
+            reopen_calls.fetch_add(1, Ordering::SeqCst);
+            Box::pin(async { Err(Error::BrowserTransport("still lost".into())) })
+        });
+        let mut stream: EventStream<Sample> = EventStream {
+            state: State::Reading(body),
+            buf: SseBuffer::default(),
+            reopen: Some(reopen),
+            reconnect_attempt: 0,
+            max_reconnects: 2,
+            _marker: PhantomData,
+        };
+
+        let error = stream.next().await.unwrap().unwrap_err();
+        assert!(matches!(error, Error::BrowserTransport(_)));
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        assert_eq!(stream.reconnect_attempt, 2);
     }
 }

@@ -29,6 +29,10 @@ pub enum Error {
     #[error("http transport: {0}")]
     Http(#[from] reqwest::Error),
 
+    /// Browser Fetch or ReadableStream transport failure.
+    #[error("browser transport: {0}")]
+    BrowserTransport(String),
+
     /// JSON (de)serialization failed.
     #[error("decode: {0}")]
     Decode(#[from] serde_json::Error),
@@ -112,7 +116,8 @@ impl Error {
     pub(crate) fn is_transient(&self) -> bool {
         match self {
             Error::Api { status, .. } => *status == 429 || (500..=599).contains(status),
-            Error::Http(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+            Error::Http(e) => e.is_timeout() || is_connect_error(e) || e.is_request(),
+            Error::BrowserTransport(_) => true,
             _ => false,
         }
     }
@@ -124,6 +129,16 @@ impl Error {
             _ => None,
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_connect_error(error: &reqwest::Error) -> bool {
+    error.is_connect()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn is_connect_error(_error: &reqwest::Error) -> bool {
+    false
 }
 
 #[cfg(test)]
