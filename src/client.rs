@@ -3,6 +3,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(target_arch = "wasm32")]
+use std::rc::Rc;
+
 use url::Url;
 
 use futures::FutureExt;
@@ -30,6 +33,7 @@ use crate::types::{
 };
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
+const DEFAULT_STREAM_RECONNECTS: u32 = 3;
 
 /// The OpenRouter client. Cheap to `Clone` (internally an `Arc`).
 #[derive(Clone, Debug)]
@@ -43,6 +47,7 @@ struct ClientInner {
     base_url: Url,
     http: reqwest::Client,
     retry: RetryConfig,
+    stream_reconnects: u32,
     app_name: Option<String>,
     referer: Option<String>,
 }
@@ -76,6 +81,11 @@ impl Client {
     /// Active retry configuration.
     pub fn retry(&self) -> &RetryConfig {
         &self.inner.retry
+    }
+
+    /// Maximum number of reconnect attempts after a transient stream failure.
+    pub fn stream_reconnects(&self) -> u32 {
+        self.inner.stream_reconnects
     }
 
     /// Optional app-attribution name (sent as `X-Title` in Phase 2+).
@@ -785,12 +795,23 @@ impl Client {
         let body_bytes = serde_json::to_vec(req)?;
         let initial = request::open_stream_bytes(self, path, body_bytes.clone()).await?;
         let client = self.clone();
+        #[cfg(not(target_arch = "wasm32"))]
         let reopen: crate::stream::Reopen = Arc::new(move || {
             let client = client.clone();
             let body_bytes = body_bytes.clone();
             async move { request::open_stream_bytes(&client, path, body_bytes).await }.boxed()
         });
-        Ok(EventStream::new(initial, reopen))
+        #[cfg(target_arch = "wasm32")]
+        let reopen: crate::stream::Reopen = Rc::new(move || {
+            let client = client.clone();
+            let body_bytes = body_bytes.clone();
+            async move { request::open_stream_bytes(&client, path, body_bytes).await }.boxed_local()
+        });
+        Ok(EventStream::new(
+            initial,
+            reopen,
+            self.inner.stream_reconnects,
+        ))
     }
 }
 
@@ -802,6 +823,7 @@ pub struct ClientBuilder {
     http_client: Option<reqwest::Client>,
     timeout: Option<Duration>,
     retry: Option<RetryConfig>,
+    stream_reconnects: Option<u32>,
     app_name: Option<String>,
     referer: Option<String>,
 }
@@ -855,6 +877,15 @@ impl ClientBuilder {
         self
     }
 
+    /// Set the number of reconnect attempts after a transient stream failure.
+    ///
+    /// Set this to zero when retrying a streamed generation could duplicate
+    /// output or cost. The default is three, matching `openrouter-go`.
+    pub fn stream_reconnects(mut self, max: u32) -> Self {
+        self.stream_reconnects = Some(max);
+        self
+    }
+
     /// App attribution: sent as `X-Title` by the request layer.
     pub fn app_name(mut self, name: impl Into<String>) -> Self {
         self.app_name = Some(name.into());
@@ -880,20 +911,28 @@ impl ClientBuilder {
         let http = match self.http_client {
             Some(c) => c,
             None => {
+                #[cfg(not(target_arch = "wasm32"))]
                 let mut b = reqwest::Client::builder();
+                #[cfg(target_arch = "wasm32")]
+                let b = reqwest::Client::builder();
+                #[cfg(not(target_arch = "wasm32"))]
                 if let Some(t) = self.timeout {
                     b = b.timeout(t);
                 }
+                #[cfg(target_arch = "wasm32")]
+                let _ = self.timeout;
                 b.build().map_err(Error::Http)?
             }
         };
         let retry = self.retry.unwrap_or_default();
+        let stream_reconnects = self.stream_reconnects.unwrap_or(DEFAULT_STREAM_RECONNECTS);
         Ok(Client {
             inner: Arc::new(ClientInner {
                 api_key,
                 base_url,
                 http,
                 retry,
+                stream_reconnects,
                 app_name: self.app_name,
                 referer: self.referer,
             }),
@@ -965,6 +1004,17 @@ mod tests {
         assert_eq!(c.app_name(), Some("demo"));
         assert_eq!(c.referer(), Some("https://demo.example"));
         assert_eq!(c.base_url().as_str(), DEFAULT_BASE_URL);
+        assert_eq!(c.stream_reconnects(), DEFAULT_STREAM_RECONNECTS);
+    }
+
+    #[test]
+    fn stream_reconnects_can_be_disabled() {
+        let c = Client::builder()
+            .api_key("sk-test")
+            .stream_reconnects(0)
+            .build()
+            .unwrap();
+        assert_eq!(c.stream_reconnects(), 0);
     }
 
     #[test]

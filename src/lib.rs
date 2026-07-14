@@ -13,6 +13,9 @@
 #![allow(clippy::result_large_err)]
 #![deny(missing_docs)]
 
+#[cfg(all(target_arch = "wasm32", not(feature = "browser")))]
+compile_error!("enable the `browser` feature when targeting wasm32-unknown-unknown");
+
 pub mod client;
 pub mod error;
 pub mod mcp;
@@ -22,6 +25,7 @@ mod request;
 pub mod responses;
 pub mod retry;
 pub mod stream;
+mod timer;
 pub mod tool_call_accumulator;
 pub mod types;
 pub mod webhooks;

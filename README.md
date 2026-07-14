@@ -26,6 +26,17 @@ MSRV is **1.75**. Optional `beta` feature gates the Responses API:
 openrouter-client = { version = "0.1", features = ["beta"] }
 ```
 
+Browser WebAssembly builds use the opt-in `browser` feature:
+
+```toml
+[dependencies]
+openrouter-client = { version = "0.1", features = ["browser"] }
+```
+
+The feature selects browser randomness, timers, Fetch/ReadableStream transport,
+and local futures for `wasm32-unknown-unknown`. Native builds keep their
+existing Tokio, reqwest streaming, and rustls transport.
+
 ## Quickstart
 
 ```rust,no_run
@@ -101,6 +112,7 @@ while let Some(chunk) = stream.next().await {
 | Async video generation (submit / poll / download) | ✅ |
 | Broadcast webhook parser (OTLP JSON) | ✅ |
 | OAuth PKCE helpers | ✅ |
+| Browser WebAssembly (`browser` feature) | ✅ |
 | **\[beta\]** Responses API (gated behind the `beta` cargo feature) | ✅ |
 
 ## Recipes

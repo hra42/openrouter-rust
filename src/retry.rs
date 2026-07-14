@@ -98,7 +98,7 @@ where
                     .retry_after()
                     .map(|ra| ra.max(computed))
                     .unwrap_or(computed);
-                tokio::time::sleep(delay).await;
+                crate::timer::sleep(delay).await;
             }
         }
     }
